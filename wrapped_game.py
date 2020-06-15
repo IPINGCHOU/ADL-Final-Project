@@ -193,19 +193,19 @@ class GameEnvironment:
         # screen_shot 500 500 3
         # score = 10*ms
 
-if __name__ == '__main__':
-    test_epoch = 3
+# if __name__ == '__main__':
+#     test_epoch = 3
 
-    for i in range(test_epoch):
-        run = True
-        # 宣告環境
-        window = env_init(screen_on=True)
-        env = GameEnvironment()
-        counter = 1
-        while run:
-            action = [random.choice((0,1,2,3))]
-            # 調用 step
-            img, score, collision, run = env.step(action)
-            print((counter, np.array(img).shape, score, collision, run))
-            counter += 1
+#     for i in range(test_epoch):
+#         run = True
+#         # 宣告環境
+#         window = env_init(screen_on=True)
+#         env = GameEnvironment()
+#         counter = 1
+#         while run:
+#             action = [random.choice((0,1,2,3))]
+#             # 調用 step
+#             img, score, collision, run = env.step(action)
+#             print((counter, np.array(img).shape, score, collision, run))
+#             counter += 1
     
