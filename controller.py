@@ -24,21 +24,41 @@ class GameMamager:
         pygame.display.set_caption('bullet hell drill')
 
     def render(self):
+        # reset 
         self.window.fill((0, 0, 0))
+
+        # plane
         self.plane.render(self.window)
+        
+        # bullet
         for bullet in self.bullets:
             bullet.render(self.window)
         
+        # score 
+        self.window.blit(self.font.render(f'Score(ms): {self.score}', 1, WHITE), (190, 10))
+        
+        # update
         pygame.display.update()
+
+    def is_collision(self):
+        boundary = PLANE_HITBOX_RADIUS + BULLET_RADIUS
+        for bullet in self.bullets:
+            distance = math.hypot(self.plane.x - bullet.x, self.plane.y - bullet.y)
+            if distance < boundary:
+                return True
+        return False
+    
+    def score_update(self, start_tick):
+        self.score += pygame.time.get_ticks()-start_tick
 
     def step(self, actions):
         self.clock.tick(FPS)
+        start_tick = pygame.time.get_ticks()
 
         for event in pygame.event.get():  # This will loop through a list of any keyboard or mouse events.
             if event.type == pygame.QUIT: # Checks if the red button in the corner of the self.window is clicked
                 self.run = False  # Ends the game loop        
-        
-        # check collision
+
         # plane move
         self.plane.move(action)
         # bullets move
@@ -53,6 +73,14 @@ class GameMamager:
         
         while len(self.bullets) < MAX_BULLETS:
             self.bullets.append(Bullet(WHITE, self.plane.x, self.plane.y))
+        
+        # update score
+        self.score_update(start_tick)
+
+        # check collision
+        if self.is_collision():
+            self.run = False
+            self.collision = True
         
         # update frame
         self.render()
@@ -78,8 +106,9 @@ if __name__ == '__main__':
         else:
             action = [4]
         # input("!#!@")
-        # img, score, collision, run = env.step(action)
-        _ = env.step(action)
+        img, score, collision, run = env.step(action)
+        # _ = env.step(action)
+        # print(score)
         # print((counter, np.array(img).shape, score, collision, run))
         # time.sleep(5)
     
