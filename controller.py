@@ -1,6 +1,7 @@
+import os
+# os.environ["SDL_VIDEODRIVER"] = "dummy"
 import pygame
 pygame.init()
-import os
 import random 
 import numpy as np
 import math
@@ -60,7 +61,7 @@ class GameMamager:
                 self.run = False  # Ends the game loop        
 
         # plane move
-        self.plane.move(action)
+        self.plane.move(actions)
         # bullets move
         for bullet in self.bullets:
             bullet_exist = False
@@ -89,23 +90,21 @@ class GameMamager:
         screen_shot = pygame.surfarray.array3d(pygame.display.get_surface())
         return screen_shot, self.score, self.collision, self.run
 
-if __name__ == '__main__':
-    run = True
-    env = GameMamager()
-    while run:
-        # action = [random.choice((0,1,2,3,4))]
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT]:
-            action = [0]
-        elif keys[pygame.K_RIGHT]:
-            action = [1]
-        elif keys[pygame.K_UP]:
-            action = [2]
-        elif keys[pygame.K_DOWN]:
-            action = [3]
-        else:
-            action = [4]
-        img, score, collision, run = env.step(action)
-        # print((counter, np.array(img).shape, score, collision, run))
-        # time.sleep(5)
+# if __name__ == '__main__':
+#     run = True
+#     env = GameMamager()
+#     while run:
+#         # action = [random.choice((0,1,2,3,4))]
+#         keys = pygame.key.get_pressed()
+#         if keys[pygame.K_LEFT]:
+#             action = [0]
+#         elif keys[pygame.K_RIGHT]:
+#             action = [1]
+#         elif keys[pygame.K_UP]:
+#             action = [2]
+#         elif keys[pygame.K_DOWN]:
+#             action = [3]
+#         else:
+#             action = [4]
+#         img, score, collision, run = env.step(action)
     
