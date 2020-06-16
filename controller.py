@@ -105,10 +105,7 @@ if __name__ == '__main__':
             action = [3]
         else:
             action = [4]
-        # input("!#!@")
         img, score, collision, run = env.step(action)
-        # _ = env.step(action)
-        # print(score)
         # print((counter, np.array(img).shape, score, collision, run))
         # time.sleep(5)
     
