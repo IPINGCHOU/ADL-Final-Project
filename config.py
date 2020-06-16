@@ -1,5 +1,10 @@
 import os, shutil
 import pygame
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--exp", action='store_true', help="whether show the explosion animation or stop game when collision happen")
+opt = parser.parse_args()
 
 # game settings
 GAME_FOLDER = os.path.abspath('.')
@@ -18,8 +23,9 @@ PLANE_STAND_IMAGE = pygame.transform.scale(pygame.image.load(os.path.join(GAME_F
 PLANE_RIGHT_IMAGE = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'sprites', 'plane', '{}.png'.format(4))), PLANE_SIZE)
 
 # Explode
+EXPLODE_MODE = opt.exp  
 EXPLODE_WIDTH, EXPLODE_HEIGHT = 30,30
-EXPLODE_LATENCY = 5
+EXPLODE_LATENCY = 1
 EXPLODE_SIZE = (EXPLODE_WIDTH, EXPLODE_HEIGHT)
 EXPLODE = []
 for i in range(15):

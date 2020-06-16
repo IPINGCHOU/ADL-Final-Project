@@ -9,6 +9,9 @@ import time
 from config import *
 from models import *
 
+
+print(EXPLODE_MODE)
+
 class GameMamager:
     def __init__(self):
         
@@ -19,6 +22,7 @@ class GameMamager:
         self.plane = Plane(250,250)
         self.bullets = []
         self.collision = False
+        self.explosion = None
         self.font = pygame.font.SysFont("comicsans", 30, True)
         
         # set title 
@@ -29,12 +33,16 @@ class GameMamager:
         self.window.fill((0, 0, 0))
 
         # plane
-        self.plane.render(self.window)
+        self.plane.render(self.window, self.collision)
         
         # bullet
         for bullet in self.bullets:
             bullet.render(self.window)
         
+        # explosion
+        if EXPLODE_MODE and self.collision:
+            self.explosion.render(self.window)
+
         # score 
         self.window.blit(self.font.render(f'Score(ms): {self.score}', 1, WHITE), (190, 10))
         
@@ -59,52 +67,43 @@ class GameMamager:
         for event in pygame.event.get():  # This will loop through a list of any keyboard or mouse events.
             if event.type == pygame.QUIT: # Checks if the red button in the corner of the self.window is clicked
                 self.run = False  # Ends the game loop        
-
-        # plane move
-        self.plane.move(actions)
-        # bullets move
-        for bullet in self.bullets:
-            bullet_exist = False
-            if 0 <= bullet.x and bullet.x <= WINOW_WIDTH and 0 <= bullet.y and bullet.y <= WINOW_HEIGHT:
-                bullet.move()
-                bullet_exist = True
-
-            if bullet_exist == False:
-                self.bullets.pop(self.bullets.index(bullet))
         
-        while len(self.bullets) < MAX_BULLETS:
-            self.bullets.append(Bullet(WHITE, self.plane.x, self.plane.y))
-        
-        # update score
-        self.score_update(start_tick)
+        # check explosion
+        if not self.collision:
+            # plane move
+            self.plane.move(actions)
+            # bullets move
+            for bullet in self.bullets:
+                bullet_exist = False
+                if 0 <= bullet.x and bullet.x <= WINOW_WIDTH and 0 <= bullet.y and bullet.y <= WINOW_HEIGHT:
+                    bullet.move()
+                    bullet_exist = True
 
-        # check collision
-        if self.is_collision():
-            self.run = False
-            self.collision = True
+                if bullet_exist == False:
+                    self.bullets.pop(self.bullets.index(bullet))
+            
+            while len(self.bullets) < MAX_BULLETS:
+                self.bullets.append(Bullet(WHITE, self.plane.x, self.plane.y))
+            
+            # update score
+            self.score_update(start_tick)
+
+            # check collision
+            if self.is_collision():
+                self.collision = True
+                if EXPLODE_MODE:
+                    self.explosion = Explode(self.plane.x, self.plane.y)
+                else:
+                    self.run = False
+        else:
+            # end game
+            if self.explosion.is_stop():
+                self.run = False
         
         # update frame
-        self.render()
+        if self.run:
+            self.render()
 
         # return 
         screen_shot = pygame.surfarray.array3d(pygame.display.get_surface())
         return screen_shot, self.score, self.collision, self.run
-
-# if __name__ == '__main__':
-#     run = True
-#     env = GameMamager()
-#     while run:
-#         # action = [random.choice((0,1,2,3,4))]
-#         keys = pygame.key.get_pressed()
-#         if keys[pygame.K_LEFT]:
-#             action = [0]
-#         elif keys[pygame.K_RIGHT]:
-#             action = [1]
-#         elif keys[pygame.K_UP]:
-#             action = [2]
-#         elif keys[pygame.K_DOWN]:
-#             action = [3]
-#         else:
-#             action = [4]
-#         img, score, collision, run = env.step(action)
-    

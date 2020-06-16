@@ -49,11 +49,11 @@ class Plane(object):
         
         self.hitbox = (self.x, self.y)
 
-    def render(self, window):
-        x_render = self.x - self.width  / 2
-        y_render = self.y - self.height / 2
-
-        window.blit(self.image, (x_render, y_render))
+    def render(self, window, collision=False):
+        if not collision:
+            x_render = self.x - self.width  / 2
+            y_render = self.y - self.height / 2
+            window.blit(self.image, (x_render, y_render))
         
         # draw hitbox
         pygame.draw.circle(window, RED, self.hitbox, PLANE_HITBOX_RADIUS, 2)
@@ -91,11 +91,13 @@ class Explode(object):
         self.tick_counter = 0
         self.ani_counter = 0
         self.length = len(EXPLODE)
+    
+    def is_stop(self):
+        return self.ani_counter >= self.length
 
     def render(self, window):
         window.blit(EXPLODE[self.ani_counter], (self.x, self.y))
         self.tick_counter += 1
-        # self.ani_counter += 1
 
         if self.tick_counter % EXPLODE_LATENCY == 0:
             self.ani_counter += 1
