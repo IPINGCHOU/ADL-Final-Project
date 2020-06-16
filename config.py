@@ -31,7 +31,6 @@ EXPLODE = []
 for i in range(15):
     EXPLODE.append(pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER,'sprites','explode','tile{:03}.png'.format(i))), EXPLODE_SIZE))
 
-
 # Bullets
 BULLET_RADIUS = 2
 BULLET_VEL = 3

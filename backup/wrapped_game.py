@@ -4,49 +4,7 @@ import pygame
 import numpy as np
 import math
 import time
-pygame.init()
-
-# game settings
-# game window
-WIN_WIDTH, WIN_HEIGHT = 500, 500
-FRAME_RATE = 60
-# Plane
-PLANE_WIDTH, PLANE_HEIGHT = 26, 50
-PLANE_VEL = 3
-PLANE_HITBOX_RADIUS = 5
-# Explode
-EXPLODE_WIDTH, EXPLODE_HEIGHT = 30,30
-EXPLODE_LATENCY = 5
-# Bullets
-BULLET_RADIUS = 2
-BULLET_VEL = 3
-MAX_BULLETS = 80
-# Colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
-YELLOW = (255, 255, 255)
-
-# read plane images
-GAME_FOLDER = os.path.abspath('.')
-plane_size = (PLANE_WIDTH, PLANE_HEIGHT)
-explode_size = (EXPLODE_WIDTH, EXPLODE_HEIGHT)
-PLANE_LEFT, PLANE_RIGHT, PLANE_STAND = [], [], []
-PLANE_LEFT.append(pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER,'sprites','plane','{}.png'.format(2))), plane_size))
-PLANE_LEFT.append(pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER,'sprites','plane','{}.png'.format(1))), plane_size))
-PLANE_RIGHT.append(pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER,'sprites','plane','{}.png'.format(4))), plane_size))
-PLANE_RIGHT.append(pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER,'sprites','plane','{}.png'.format(5))), plane_size))
-PLANE_STAND.append(pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER,'sprites','plane','{}.png'.format(3))), plane_size))
-EXPLODE = []
-for i in range(15):
-    EXPLODE.append(pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER,'sprites','explode','tile{:03}.png'.format(i))), explode_size))
-
-window = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
-pygame.display.set_caption('bullet hell drill')
-# pygame.time.set_timer(pygame.USEREVENT, 100)
-clock = pygame.time.Clock()
+from config import *
 
 class Plane(object):
     def __init__(self, x, y):
@@ -134,6 +92,7 @@ class GameEnvironment:
         self.bullets = []
         self.collision = False
         self.explode_made = False
+
         self.font = pygame.font.SysFont("comicsans", 30, True)
         
     def WindowRender(self):
@@ -219,7 +178,6 @@ class GameEnvironment:
                 self.plane.y += PLANE_VEL
 
             self.WindowRender()
-            
         else: # plane crashed
             if self.explode_made == False:
                 self.score += (pygame.time.get_ticks()-start_tick)
@@ -236,15 +194,18 @@ class GameEnvironment:
         # score = 10*ms
 
 # if __name__ == '__main__':
-#     run = True
-#     # 宣告環境
-#     env = GameEnvironment()
-#     counter = 1
-#     while run:
-#         action = [random.choice((0,1,2,3))]
-#         # 調用 step
-#         img, score, collision, run = env.step(action)
-#         print((counter, np.array(img).shape, score, collision, run))
-#         counter += 1
-#         time.sleep(5)
+#     test_epoch = 3
+
+#     for i in range(test_epoch):
+#         run = True
+#         # 宣告環境
+#         window = env_init(screen_on=True)
+#         env = GameEnvironment()
+#         counter = 1
+#         while run:
+#             action = [random.choice((0,1,2,3))]
+#             # 調用 step
+#             img, score, collision, run = env.step(action)
+#             print((counter, np.array(img).shape, score, collision, run))
+#             counter += 1
     
