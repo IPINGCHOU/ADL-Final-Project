@@ -9,9 +9,7 @@ import time
 from game_config import *
 from game_models import *
 
-
-
-class GameMamager:
+class GameManager:
     def __init__(self, explode_mode):
         
         self.window = pygame.display.set_mode((WINOW_WIDTH, WINOW_HEIGHT))
@@ -27,6 +25,19 @@ class GameMamager:
 
         # set title 
         pygame.display.set_caption('bullet hell drill')
+
+    def reset(self):
+        self.window = pygame.display.set_mode((WINOW_WIDTH, WINOW_HEIGHT))
+        self.clock = pygame.time.Clock()
+        self.score = 0
+        self.run = True
+        self.plane = Plane(250,250)
+        self.bullets = []
+        self.collision = False
+        self.explosion = None
+        self.font = pygame.font.SysFont("comicsans", 30, True)
+
+        return pygame.surfarray.array3d(pygame.display.get_surface())   
 
     def render(self, start_tick):
         # reset 

@@ -19,7 +19,7 @@ class Plane(object):
     
     def move(self, action):
 
-        action = action[0]
+        # action = action[0]
         # choose image and move
         if action == 0: 
             self.x -= PLANE_VEL

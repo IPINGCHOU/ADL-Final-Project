@@ -4,11 +4,11 @@ import argparse
 
 
 # game settings
-GAME_FOLDER = os.path.abspath('.')
+GAME_FOLDER = os.path.abspath('..')
 
 # game window
 WINOW_WIDTH, WINOW_HEIGHT = 500, 500
-FPS = 60
+FPS = 30
 
 # Plane
 PLANE_WIDTH, PLANE_HEIGHT = 26, 50
