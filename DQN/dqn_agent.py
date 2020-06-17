@@ -19,6 +19,8 @@ EPS_END = 0.05
 EPS_DECAY = 200
 # MEMORY_CAPACITY = 10000
 BATCH_SIZE = 512
+REWARD_MULTI = 100
+LEARNING_RATE = 1e-03
 
 class DQN(nn.Module):
     '''
@@ -95,7 +97,7 @@ class AgentDQN:
         self.buffer_size = 1000 # max size of replay buffer
 
         # optimizer
-        self.optimizer = optim.RMSprop(self.online_net.parameters(), lr=1e-4)
+        self.optimizer = optim.RMSprop(self.online_net.parameters(), lr=LEARNING_RATE)
 
         self.steps = 0 # num. of passed steps
 
@@ -215,7 +217,7 @@ class AgentDQN:
                 # select and perform action
                 action = self.make_action(state).to(DEVICE)
                 next_state, reward, done, _ = self.env.step(action.item())
-                total_reward += reward
+                total_reward += (reward * REWARD_MULTI)
                 reward = torch.tensor([reward]).to(DEVICE)
 
                 # process new state
@@ -249,7 +251,7 @@ class AgentDQN:
                 print('Episode: %d | Steps: %d/%d | Avg reward: %f | loss: %f '%
                         (episodes_done_num, self.steps, self.num_timesteps, avg_reward, loss))
                 total_reward = 0
-                if avg_reward > best_avg and avg_reward >= 30:
+                if avg_reward > best_avg:
                     self.save('dqn')
                     best_avg = avg_reward
                 np.save('dqn_reward', np.array(record_reward))
