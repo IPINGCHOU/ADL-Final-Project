@@ -10,18 +10,21 @@ from game_config import *
 from game_models import *
 
 class GameManager:
-    def __init__(self, explode_mode):
+    def __init__(self, explode_mode, plane_show, score_show):
         
         self.window = pygame.display.set_mode((WINOW_WIDTH, WINOW_HEIGHT))
         self.clock = pygame.time.Clock()
         self.score = 0
         self.run = True
-        self.plane = Plane(250,250)
+
+        self.plane = Plane(WINOW_WIDTH//2, WINOW_HEIGHT//2)
         self.bullets = []
         self.collision = False
         self.explosion = None
-        self.font = pygame.font.SysFont("comicsans", 30, True)
-        self.explode_mode = explode_mode        
+        self.font = pygame.font.SysFont("comicsans", 15, True)
+        self.explode_mode = explode_mode
+        self.plane_show = plane_show     
+        self.score_show = score_show
 
         # set title 
         pygame.display.set_caption('bullet hell drill')
@@ -31,7 +34,7 @@ class GameManager:
         self.clock = pygame.time.Clock()
         self.score = 0
         self.run = True
-        self.plane = Plane(250,250)
+        self.plane = Plane(WINOW_WIDTH//2, WINOW_HEIGHT//2)
         self.bullets = []
         self.collision = False
         self.explosion = None
@@ -44,7 +47,7 @@ class GameManager:
         self.window.fill((0, 0, 0))
 
         # plane
-        self.plane.render(self.window, self.collision)
+        self.plane.render(self.window, self.collision, self.plane_show)
         
         # bullet
         for bullet in self.bullets:
@@ -55,7 +58,8 @@ class GameManager:
             self.explosion.render(self.window)
 
         # score 
-        self.window.blit(self.font.render(f'Score(s): {self.score}', 1, WHITE), (190, 10))
+        if self.score_show == True:
+            self.window.blit(self.font.render(f'Score(s): {self.score}', 1, WHITE), (50, 10))
         
         # update
         pygame.display.update()
@@ -67,7 +71,7 @@ class GameManager:
         boundary = PLANE_HITBOX_RADIUS + BULLET_RADIUS
         for bullet in self.bullets:
             distance = math.hypot(self.plane.x - bullet.x, self.plane.y - bullet.y)
-            if distance < boundary:
+            if distance < (boundary-COLL_TOLERANCE):
                 return True
         return False
     

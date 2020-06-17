@@ -7,8 +7,13 @@ import sys
 sys.path.insert(1, '../game')
 from game_controller import GameManager
 
+EXPOLDE_MODE = True
+PLANE_SHOW = False
+SCORE_SHOW = False
+SCREEN_SHOW = True
+env = GameManager(explode_mode=EXPOLDE_MODE, plane_show=PLANE_SHOW, score_show=SCORE_SHOW)
+
 run = True
-env = GameManager(True)
 while run:
     # action = [random.choice((0,1,2,3,4))]
     keys = pygame.key.get_pressed()

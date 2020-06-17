@@ -49,14 +49,15 @@ class Plane(object):
         
         self.hitbox = (self.x, self.y)
 
-    def render(self, window, collision=False):
+    def render(self, window, collision=False, plane_show = True):
         if not collision:
             x_render = self.x - self.width  / 2
             y_render = self.y - self.height / 2
-            window.blit(self.image, (x_render, y_render))
-        
+            if plane_show == True:
+                window.blit(self.image, (x_render, y_render))
+
         # draw hitbox
-        pygame.draw.circle(window, RED, self.hitbox, PLANE_HITBOX_RADIUS, 2)
+        pygame.draw.circle(window, RED, self.hitbox, PLANE_HITBOX_RADIUS, PLANE_HITBOX_RADIUS)
 
 class Bullet(object):
     def __init__(self, color, plane_x, plane_y):
@@ -86,8 +87,8 @@ class Bullet(object):
 
 class Explode(object):
     def __init__(self, x, y):
-        self.x = x - PLANE_WIDTH / 2
-        self.y = y - PLANE_HEIGHT / 2
+        self.x = x - PLANE_WIDTH
+        self.y = y - PLANE_HEIGHT
         self.tick_counter = 0
         self.ani_counter = 0
         self.length = len(EXPLODE)
