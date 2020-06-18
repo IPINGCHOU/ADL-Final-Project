@@ -10,7 +10,7 @@ from game_controller import GameManager
 EXPOLDE_MODE = True
 PLANE_SHOW = False
 SCORE_SHOW = False
-SCREEN_SHOW = True
+SCREEN_SHOW = False
 env = GameManager(explode_mode=EXPOLDE_MODE, plane_show=PLANE_SHOW, score_show=SCORE_SHOW)
 
 run = True

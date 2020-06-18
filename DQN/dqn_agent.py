@@ -7,9 +7,11 @@ import torch.optim as optim
 import torch.nn as nn
 import os
 import sys
+import cv2
 sys.path.insert(1, '../game')
 
 from collections import namedtuple
+from game_controller import ReplaySaver
 use_cuda = torch.cuda.is_available()
 
 # h-para
@@ -17,9 +19,9 @@ DEVICE = 'cuda:0'
 EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 200
-MEMORY_CAPACITY = 10000
-TRAINING_START = 2048
-BATCH_SIZE = 1024
+MEMORY_CAPACITY = 20000
+TRAINING_START = 4096
+BATCH_SIZE = 2048
 REWARD_MULTI = 1
 LEARNING_RATE = 1e-02
 RESIZE = True
@@ -74,7 +76,7 @@ class ReplayMemory(object):
         return len(self.memory)
     
 class AgentDQN:
-    def __init__(self, env, MODE):
+    def __init__(self, env, MODE, load_path = './'):
         self.env = env
         self.input_channels = 3
         self.num_actions = 5
@@ -86,7 +88,7 @@ class AgentDQN:
         self.online_net = self.online_net.to(DEVICE) if use_cuda else self.online_net
 
         if MODE=='test':
-            self.load('dqn')
+            self.load(load_path)
 
         # discounted reward
         self.GAMMA = 0.99
@@ -98,7 +100,7 @@ class AgentDQN:
         self.num_timesteps = 3000000 # total training steps
         self.display_freq = 10 # frequency to display training progress
         self.save_freq = 200000 # frequency to save the model
-        self.target_update_freq = 1000 # frequency to update target network
+        self.target_update_freq = 500 # frequency to update target network
         self.buffer_size = MEMORY_CAPACITY # max size of replay buffer
 
         # optimizer
@@ -117,11 +119,11 @@ class AgentDQN:
     def load(self, load_path):
         print('load model from', load_path)
         if use_cuda:
-            self.online_net.load_state_dict(torch.load(load_path + '_online.cpt', map_location = DEVICE))
-            self.target_net.load_state_dict(torch.load(load_path + '_target.cpt', map_location = DEVICE))
+            self.online_net.load_state_dict(torch.load(load_path + 'dqn_online.cpt', map_location = DEVICE))
+            self.target_net.load_state_dict(torch.load(load_path + 'dqn_target.cpt', map_location = DEVICE))
         else:
-            self.online_net.load_state_dict(torch.load(load_path + '_online.cpt', map_location=lambda storage, loc: storage))
-            self.target_net.load_state_dict(torch.load(load_path + '_target.cpt', map_location=lambda storage, loc: storage))
+            self.online_net.load_state_dict(torch.load(load_path + 'dqn_online.cpt', map_location=lambda storage, loc: storage))
+            self.target_net.load_state_dict(torch.load(load_path + 'dqn_target.cpt', map_location=lambda storage, loc: storage))
 
     def init_game_setting(self):
         # we don't need init_game_setting in DQN
@@ -138,7 +140,6 @@ class AgentDQN:
         
         if test == True:
             eps_threshold = 0
-            state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
 
         if sample > eps_threshold:
             with torch.no_grad():
@@ -269,3 +270,49 @@ class AgentDQN:
                 self.save('dqn_final')
                 break
         self.save('dqn')
+
+    def test(self, episodes = 10, saving_path = './test.mp4', size = (750,750), fps = 30):
+        saver = ReplaySaver()
+        rewards = []
+        best_reward = 0
+
+        
+        for i in range(episodes):
+            done = False
+            state = self.env.reset(resize = RESIZE, size = RESIZE_SIZE)
+            state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
+            saver.get_current_frame()
+            episode_reward = 0.0
+
+            # play one game
+            while(not done):
+                action = self.make_action(state, test=True)
+                state, reward, done, end = self.env.step(action)
+                state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
+                saver.get_current_frame()
+                episode_reward += reward
+                print('\r episode: {} | Now reward: {} '.format(i+1,episode_reward), end = '\r')
+            
+            while(end):
+                _,_,_, end = self.env.step(action)
+                saver.get_current_frame()
+            
+            if episode_reward <= best_reward:
+                saver.reset()
+            else:
+                best_reward = episode_reward
+                saver.save_best()
+                saver.reset()
+
+            rewards.append(episode_reward)
+        print('Run %d episodes'%(episodes))
+        print('Mean:', np.mean(rewards))
+        print('Median:', np.median(rewards))
+        print('Saving best reward video')
+        saver.make_video(path = saving_path, size = size, fps = fps)
+        print('Video saved :)')
+            
+
+
+
+

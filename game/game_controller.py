@@ -139,3 +139,27 @@ class GameManager:
             screen_shot = self.resize_state(size)
 
         return screen_shot, self.score, self.collision, self.run
+
+class ReplaySaver:
+    def __init__(self):
+        self.frame_array = []
+        self.best_frame_array = []
+    
+    def reset(self):
+        self.frame_array = []
+    
+    def save_best(self):
+        self.best_frame_array = self.frame_array
+    
+    def get_current_frame(self):
+        frame = pygame.surfarray.array3d(pygame.display.get_surface())
+        self.frame_array.append(frame)
+    
+    def make_video(self, path, size = (750,750), fps = 60):
+        out = cv2.VideoWriter(path,cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
+        for i in self.best_frame_array:
+            i = np.rot90(i,3)
+            i = cv2.cvtColor(i, cv2.COLOR_BGR2RGB)
+            out.write(i)
+        
+        out.release()
