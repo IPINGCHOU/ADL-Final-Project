@@ -17,10 +17,13 @@ DEVICE = 'cuda:0'
 EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 200
-# MEMORY_CAPACITY = 10000
-BATCH_SIZE = 512
-REWARD_MULTI = 100
-LEARNING_RATE = 1e-03
+MEMORY_CAPACITY = 10000
+TRAINING_START = 2048
+BATCH_SIZE = 1024
+REWARD_MULTI = 1
+LEARNING_RATE = 1e-02
+RESIZE = True
+RESIZE_SIZE = (80,80)
 
 class DQN(nn.Module):
     '''
@@ -28,22 +31,24 @@ class DQN(nn.Module):
     '''
     def __init__(self, channels, num_actions):
         super(DQN, self).__init__()
-        self.conv1 = nn.Conv2d(channels, 32, kernel_size=8, stride=5)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=4)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=3)
-        self.conv4 = nn.Conv2d(64, 128, kernel_size=2, stride=2)
-        self.fc = nn.Linear(2048, 512)
+        self.conv1 = nn.Conv2d(channels, 32, kernel_size=8, stride=3)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=2)
+        self.fc = nn.Linear(1600, 512)
         self.head = nn.Linear(512, num_actions)
+
+        self.bn1 = nn.BatchNorm2d(32)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.bn3 = nn.BatchNorm2d(64)
 
         self.relu = nn.ReLU()
         self.lrelu = nn.LeakyReLU(0.01)
 
     def forward(self, x):
-        x = self.relu(self.conv1(x))
-        x = self.relu(self.conv2(x))
-        x = self.relu(self.conv3(x)) 
-        x = self.relu(self.conv4(x)) # 1 128 4 4
-        # print(x.shape)
+        x = self.relu(self.bn1(self.conv1(x)))
+        x = self.relu(self.bn2(self.conv2(x)))
+        x = self.relu(self.bn3(self.conv3(x)))
+        #  print(x.shape)
         x = self.lrelu(self.fc(x.view(x.size(0), -1)))
         q = self.head(x)
         return q
@@ -88,13 +93,13 @@ class AgentDQN:
 
         # training hyperparameters
         self.train_freq = 4 # frequency to train the online network
-        self.learning_start = 1000 # before we start to update our network, we wait a few steps first to fill the replay.
+        self.learning_start = TRAINING_START # before we start to update our network, we wait a few steps first to fill the replay.
         self.batch_size = BATCH_SIZE
         self.num_timesteps = 3000000 # total training steps
         self.display_freq = 10 # frequency to display training progress
         self.save_freq = 200000 # frequency to save the model
         self.target_update_freq = 1000 # frequency to update target network
-        self.buffer_size = 1000 # max size of replay buffer
+        self.buffer_size = MEMORY_CAPACITY # max size of replay buffer
 
         # optimizer
         self.optimizer = optim.RMSprop(self.online_net.parameters(), lr=LEARNING_RATE)
@@ -208,16 +213,19 @@ class AgentDQN:
         loss = 0
         best_avg = 0
         while(True):
-            state = self.env.reset()
+            state = self.env.reset(resize = RESIZE, size = RESIZE_SIZE)
             # State: (80,80,4) --> (1,4,80,80)
             state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
             done = False
-
+            episode_reward = 0
             while(not done):
                 # select and perform action
                 action = self.make_action(state).to(DEVICE)
-                next_state, reward, done, _ = self.env.step(action.item())
+                next_state, reward, done, _ = self.env.step(action.item(), resize = RESIZE, size = RESIZE_SIZE)
                 total_reward += (reward * REWARD_MULTI)
+                episode_reward += (reward * REWARD_MULTI)
+                print('\r Now reward: {}'.format(episode_reward), end = '\r')
+
                 reward = torch.tensor([reward]).to(DEVICE)
 
                 # process new state

@@ -6,6 +6,7 @@ import random
 import numpy as np
 import math
 import time
+import cv2
 from game_config import *
 from game_models import *
 
@@ -28,8 +29,14 @@ class GameManager:
 
         # set title 
         pygame.display.set_caption('bullet hell drill')
+    
+    def resize_state(self, size):
+        arr = pygame.surfarray.array3d(pygame.display.get_surface())
+        image = cv2.resize(arr, size)
+        image = np.ascontiguousarray(image, dtype = np.float32) /255
+        return image
 
-    def reset(self):
+    def reset(self, resize = True, size = (80,80)):
         self.window = pygame.display.set_mode((WINOW_WIDTH, WINOW_HEIGHT))
         self.clock = pygame.time.Clock()
         self.score = 0
@@ -40,7 +47,10 @@ class GameManager:
         self.explosion = None
         self.font = pygame.font.SysFont("comicsans", 30, True)
 
-        return pygame.surfarray.array3d(pygame.display.get_surface())   
+        if resize == False:
+            return pygame.surfarray.array3d(pygame.display.get_surface())
+        else:
+            return self.resize_state(size)
 
     def render(self, start_tick):
         # reset 
@@ -76,9 +86,12 @@ class GameManager:
         return False
     
     def score_update(self, start_tick):
-        self.score += time.time()-start_tick
+        # self.score += time.time()-start_tick
+        self.score += 0.1
+        if self.collision == True:
+            self.score -= 100
 
-    def step(self, actions):
+    def step(self, actions, resize = True, size = (80,80)):
         self.clock.tick(FPS)
         start_tick = time.time()
 
@@ -120,5 +133,9 @@ class GameManager:
             self.render(start_tick)
 
         # return 
-        screen_shot = pygame.surfarray.array3d(pygame.display.get_surface())
+        if resize == False:
+            screen_shot = pygame.surfarray.array3d(pygame.display.get_surface())
+        else:
+            screen_shot = self.resize_state(size)
+
         return screen_shot, self.score, self.collision, self.run
