@@ -48,6 +48,7 @@ class GameManager:
         self.collision = False
         self.explosion = None
         self.font = pygame.font.SysFont("comicsans", 30, True)
+        self.dead = False
 
         if resize == False:
             return pygame.surfarray.array3d(pygame.display.get_surface())

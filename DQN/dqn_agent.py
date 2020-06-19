@@ -20,7 +20,7 @@ EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 200
 MEMORY_CAPACITY = 20000
-TRAINING_START = 4096
+TRAINING_START = 2048
 BATCH_SIZE = 2048
 REWARD_MULTI = 1
 LEARNING_RATE = 1e-02
@@ -227,7 +227,7 @@ class AgentDQN:
                 episode_reward += (reward * REWARD_MULTI)
                 print('\r Now reward: {}'.format(episode_reward), end = '\r')
 
-                reward = torch.tensor([reward]).to(DEVICE)
+                reward = torch.tensor([reward]).type(torch.cuda.FloatTensor).to(DEVICE)
 
                 # process new state
                 next_state = torch.from_numpy(next_state).permute(2,0,1).type(torch.cuda.FloatTensor).unsqueeze(0)
