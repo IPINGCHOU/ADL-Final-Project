@@ -5,7 +5,7 @@ import pygame
 GAME_FOLDER = os.path.abspath('..')
 
 # game window
-WINOW_WIDTH, WINOW_HEIGHT = 750, 750
+WINDOW_WIDTH, WINDOW_HEIGHT = 750, 750
 FPS = 60
 
 # Plane
@@ -33,8 +33,8 @@ MAX_BULLETS = 100
 COLL_TOLERANCE = 1
 
 # Score
-DEAD_PUNISH = -100
-WARNING_PUNISH = -0.1
+DEAD_PUNISH = -500
+WARNING_PUNISH = -1
 SURVIVE_SCORE = 0.1
 
 # Colors

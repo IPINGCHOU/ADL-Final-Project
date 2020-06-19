@@ -19,13 +19,16 @@ DEVICE = 'cuda:0'
 EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 200
-MEMORY_CAPACITY = 20000
-TRAINING_START = 2048
-BATCH_SIZE = 2048
 REWARD_MULTI = 1
-LEARNING_RATE = 1e-02
 RESIZE = True
 RESIZE_SIZE = (80,80)
+
+# model settings
+MEMORY_CAPACITY = 20000
+TRAINING_START = 4096
+BATCH_SIZE = 2048
+TARGET_UPDATE_FREQ = 10
+LEARNING_RATE = 1e-02
 
 class DQN(nn.Module):
     '''
@@ -94,13 +97,13 @@ class AgentDQN:
         self.GAMMA = 0.99
 
         # training hyperparameters
-        self.train_freq = 4 # frequency to train the online network
+        self.train_freq = 1 # frequency to train the online network
         self.learning_start = TRAINING_START # before we start to update our network, we wait a few steps first to fill the replay.
         self.batch_size = BATCH_SIZE
         self.num_timesteps = 3000000 # total training steps
         self.display_freq = 10 # frequency to display training progress
         self.save_freq = 200000 # frequency to save the model
-        self.target_update_freq = 500 # frequency to update target network
+        self.target_update_freq = TARGET_UPDATE_FREQ # frequency to update target network
         self.buffer_size = MEMORY_CAPACITY # max size of replay buffer
 
         # optimizer
@@ -286,7 +289,7 @@ class AgentDQN:
             # play one game
             while(not done):
                 action = self.make_action(state, test=True)
-                state, reward, done, end = self.env.step(action)
+                state, reward, done, end = self.env.step(action, resize= RESIZE, size = RESIZE_SIZE)
                 state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
                 saver.get_current_frame()
                 episode_reward += reward

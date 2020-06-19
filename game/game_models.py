@@ -39,13 +39,13 @@ class Plane(object):
         # boundary limit
         if self.x - PLANE_HITBOX_RADIUS < 0:
             self.x = PLANE_HITBOX_RADIUS
-        if self.x + PLANE_HITBOX_RADIUS > WINOW_WIDTH:
-            self.x = WINOW_WIDTH - PLANE_HITBOX_RADIUS
+        if self.x + PLANE_HITBOX_RADIUS > WINDOW_WIDTH:
+            self.x = WINDOW_WIDTH - PLANE_HITBOX_RADIUS
 
         if self.y - PLANE_HITBOX_RADIUS < 0:
             self.y = PLANE_HITBOX_RADIUS
-        if self.y + PLANE_HITBOX_RADIUS > WINOW_HEIGHT:
-            self.y = WINOW_HEIGHT - PLANE_HITBOX_RADIUS
+        if self.y + PLANE_HITBOX_RADIUS > WINDOW_HEIGHT:
+            self.y = WINDOW_HEIGHT - PLANE_HITBOX_RADIUS
         
         self.hitbox = (self.x, self.y)
 
@@ -69,11 +69,11 @@ class Bullet(object):
         self.velocity = BULLET_VEL
 
         if random.choice((0,1)) == 0: # bullet come from left or right
-            self.x = random.choice((0,WINOW_WIDTH))
-            self.y = random.uniform(WINOW_HEIGHT, 0)
+            self.x = random.choice((0,WINDOW_WIDTH))
+            self.y = random.uniform(WINDOW_HEIGHT, 0)
         else: # bullet come from top or buttom
-            self.x = random.uniform(WINOW_WIDTH, 0)
-            self.y = random.choice((0, WINOW_HEIGHT))
+            self.x = random.uniform(WINDOW_WIDTH, 0)
+            self.y = random.choice((0, WINDOW_HEIGHT))
 
         x_diff = plane_x - self.x
         y_diff = plane_y - self.y
@@ -84,6 +84,39 @@ class Bullet(object):
     def move(self):
         self.x += self.change_x
         self.y += self.change_y
+    
+    def render(self, window):
+        pygame.draw.circle(window, self.color, (int(self.x), int(self.y)), self.radius)
+
+class Bullet_2(object):
+    def __init__(self, color):
+        self.color = color
+        self.radius = BULLET_RADIUS
+        self.x, self.y = 0,0
+        self.angle = 0
+        choice = random.randint(0, 3)
+        if choice == 0:
+            self.x = 1
+            self.y = 1
+            self.angle = random.randint(270, 360)
+        elif choice == 1:
+            self.x = WINDOW_WIDTH -1
+            self.y = 1
+            self.angle = random.randint(180, 270)
+        elif choice == 2:
+            self.x = 1
+            self.y = WINDOW_HEIGHT -1
+            self.angle = random.randint(0, 90)
+        elif choice == 3:
+            self.x = WINDOW_WIDTH -1
+            self.y = WINDOW_HEIGHT -1
+            self.angle = random.randint(90, 180)
+        #random speed
+        self.speed = random.randint(3, 5)
+
+    def move(self):
+        self.x = self.x + math.cos(math.radians(self.angle)) * self.speed
+        self.y = self.y - math.sin(math.radians(self.angle)) * self.speed
     
     def render(self, window):
         pygame.draw.circle(window, self.color, (int(self.x), int(self.y)), self.radius)

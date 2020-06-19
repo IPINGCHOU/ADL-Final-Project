@@ -13,6 +13,7 @@ from collections import namedtuple
 
 #%%
 MODE = 'train'
+BULLET_MODE = 'random'
 EXPOLDE_MODE = False
 PLANE_SHOW = False
 SCORE_SHOW = False
@@ -24,6 +25,6 @@ if SCREEN_SHOW == False:
 from game_controller import GameManager
 from dqn_agent import *
 
-env = GameManager(explode_mode=EXPOLDE_MODE, plane_show=PLANE_SHOW, score_show=SCORE_SHOW)
+env = GameManager(bullet_mode = BULLET_MODE, explode_mode=EXPOLDE_MODE, plane_show=PLANE_SHOW, score_show=SCORE_SHOW)
 dqn = AgentDQN(env, MODE)
 dqn.train()

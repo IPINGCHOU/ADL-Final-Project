@@ -11,7 +11,8 @@ EXPOLDE_MODE = True
 PLANE_SHOW = False
 SCORE_SHOW = False
 SCREEN_SHOW = True
-env = GameManager(explode_mode=EXPOLDE_MODE, plane_show=PLANE_SHOW, score_show=SCORE_SHOW)
+BULLET_MODE = 'random'
+env = GameManager(bullet_mode = BULLET_MODE, explode_mode=EXPOLDE_MODE, plane_show=PLANE_SHOW, score_show=SCORE_SHOW)
 
 run = True
 total_score = 0

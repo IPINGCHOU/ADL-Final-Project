@@ -11,18 +11,20 @@ from game_config import *
 from game_models import *
 
 class GameManager:
-    def __init__(self, explode_mode, plane_show, score_show):
+    def __init__(self, bullet_mode, explode_mode, plane_show, score_show):
         
-        self.window = pygame.display.set_mode((WINOW_WIDTH, WINOW_HEIGHT))
+        self.window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
         self.score = 0
         self.run = True
 
-        self.plane = Plane(WINOW_WIDTH//2, WINOW_HEIGHT//2)
+        self.plane = Plane(WINDOW_WIDTH//2, WINDOW_HEIGHT//2)
         self.bullets = []
         self.collision = False
         self.explosion = None
         self.font = pygame.font.SysFont("comicsans", 15, True)
+
+        self.bullet_mode = bullet_mode
         self.explode_mode = explode_mode
         self.plane_show = plane_show     
         self.score_show = score_show
@@ -39,11 +41,11 @@ class GameManager:
         return image
 
     def reset(self, resize = True, size = (80,80)):
-        self.window = pygame.display.set_mode((WINOW_WIDTH, WINOW_HEIGHT))
+        self.window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
         self.score = 0
         self.run = True
-        self.plane = Plane(WINOW_WIDTH//2, WINOW_HEIGHT//2)
+        self.plane = Plane(WINDOW_WIDTH//2, WINDOW_HEIGHT//2)
         self.bullets = []
         self.collision = False
         self.explosion = None
@@ -99,7 +101,7 @@ class GameManager:
         # self.score += time.time()-start_tick
         in_warning_count = self.in_warning_zone()
 
-        self.score = SURVIVE_SCORE
+        self.score += SURVIVE_SCORE
         self.score += in_warning_count*WARNING_PUNISH
 
         if self.run == False or self.dead == True:
@@ -123,7 +125,7 @@ class GameManager:
             # bullets move
             for bullet in self.bullets:
                 bullet_exist = False
-                if 0 <= bullet.x and bullet.x <= WINOW_WIDTH and 0 <= bullet.y and bullet.y <= WINOW_HEIGHT:
+                if 0 <= bullet.x and bullet.x <= WINDOW_WIDTH and 0 <= bullet.y and bullet.y <= WINDOW_HEIGHT:
                     bullet.move()
                     bullet_exist = True
 
@@ -131,7 +133,10 @@ class GameManager:
                     self.bullets.pop(self.bullets.index(bullet))
             
             while len(self.bullets) < MAX_BULLETS:
-                self.bullets.append(Bullet(WHITE, self.plane.x, self.plane.y))
+                if self.bullet_mode == 'random':
+                    self.bullets.append(Bullet_2(YELLOW))
+                elif self.bullet_mode == 'aim':
+                    self.bullets.append(Bullet(WHITE, self.plane.x, self.plane.y))
             
             # check collision
             if self.is_collision():
