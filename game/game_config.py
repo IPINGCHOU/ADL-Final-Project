@@ -6,6 +6,7 @@ GAME_FOLDER = os.path.abspath('..')
 
 # game window
 WINDOW_WIDTH, WINDOW_HEIGHT = 750, 750
+RESIZE_SIZE = (80,80)
 FPS = 60
 
 # Plane

@@ -30,6 +30,9 @@ class GameManager:
         self.score_show = score_show
 
         self.dead = False
+        self.action_space = 5
+        self.obs_resize_shape = [RESIZE_SIZE[0], RESIZE_SIZE[1], 3]
+        self.obs_shape = [WINDOW_WIDTH, WINDOW_HEIGHT, 3]
 
         # set title 
         pygame.display.set_caption('bullet hell drill')
@@ -102,7 +105,7 @@ class GameManager:
         in_warning_count = self.in_warning_zone()
 
         self.score += SURVIVE_SCORE
-        self.score += in_warning_count*WARNING_PUNISH
+        # self.score += in_warning_count*WARNING_PUNISH
 
         if self.run == False or self.dead == True:
             self.score = 0
