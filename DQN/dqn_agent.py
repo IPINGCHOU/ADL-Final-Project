@@ -239,7 +239,6 @@ class AgentDQN:
 
                 # move to the next state
                 state = next_state
-
                 # Perform one step of the optimization
                 if self.steps > self.learning_start and self.steps % self.train_freq == 0:
                     loss = self.update()

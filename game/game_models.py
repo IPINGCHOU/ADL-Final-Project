@@ -49,7 +49,7 @@ class Plane(object):
         
         self.hitbox = (self.x, self.y)
 
-    def render(self, window, collision=False, plane_show = True):
+    def render(self, window, collision=False, plane_show = True, is_warning = True):
         if not collision:
             x_render = self.x - self.width  / 2
             y_render = self.y - self.height / 2
@@ -58,6 +58,9 @@ class Plane(object):
 
         # draw hitbox
         pygame.draw.circle(window, RED, self.hitbox, PLANE_HITBOX_RADIUS, PLANE_HITBOX_RADIUS)
+        # draw warning circle
+        if is_warning == True:
+            pygame.draw.circle(window, BLUE, self.hitbox, PLANE_WARNING_RADIUS, 3)
 
 class Bullet(object):
     def __init__(self, color, plane_x, plane_y):

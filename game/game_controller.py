@@ -27,6 +27,8 @@ class GameManager:
         self.plane_show = plane_show     
         self.score_show = score_show
 
+        self.dead = False
+
         # set title 
         pygame.display.set_caption('bullet hell drill')
     
@@ -52,7 +54,7 @@ class GameManager:
         else:
             return self.resize_state(size)
 
-    def render(self, start_tick):
+    def render(self):
         # reset 
         self.window.fill((0, 0, 0))
 
@@ -73,9 +75,6 @@ class GameManager:
         
         # update
         pygame.display.update()
-        # update score
-        if self.collision == False:
-            self.score_update(start_tick)
 
     def is_collision(self):
         boundary = PLANE_HITBOX_RADIUS + BULLET_RADIUS
@@ -85,15 +84,32 @@ class GameManager:
                 return True
         return False
     
-    def score_update(self, start_tick):
+    def in_warning_zone(self):
+        boundary = PLANE_WARNING_RADIUS + BULLET_RADIUS
+        in_count = 0
+        for bullet in self.bullets:
+            distance = math.hypot(self.plane.x - bullet.x, self.plane.y - bullet.y)
+            if distance < (boundary-COLL_TOLERANCE):
+                in_count += 1
+        return in_count
+
+    
+    def score_update(self):
         # self.score += time.time()-start_tick
-        self.score += 0.1
-        if self.collision == True:
-            self.score -= 100
+        in_warning_count = self.in_warning_zone()
+
+        self.score = SURVIVE_SCORE
+        self.score += in_warning_count*WARNING_PUNISH
+
+        if self.run == False or self.dead == True:
+            self.score = 0
+
+        if self.collision == True and self.dead == False:
+            self.score = DEAD_PUNISH
+            self.dead = True
 
     def step(self, actions, resize = True, size = (80,80)):
         self.clock.tick(FPS)
-        start_tick = time.time()
 
         for event in pygame.event.get():  # This will loop through a list of any keyboard or mouse events.
             if event.type == pygame.QUIT: # Checks if the red button in the corner of the self.window is clicked
@@ -130,7 +146,7 @@ class GameManager:
         
         # update frame
         if self.run:
-            self.render(start_tick)
+            self.render()
 
         # return 
         if resize == False:
@@ -138,6 +154,8 @@ class GameManager:
         else:
             screen_shot = self.resize_state(size)
 
+
+        self.score_update()
         return screen_shot, self.score, self.collision, self.run
 
 class ReplaySaver:

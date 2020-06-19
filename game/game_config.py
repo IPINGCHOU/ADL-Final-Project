@@ -1,7 +1,5 @@
 import os, shutil
 import pygame
-import argparse
-
 
 # game settings
 GAME_FOLDER = os.path.abspath('..')
@@ -14,6 +12,7 @@ FPS = 60
 PLANE_WIDTH, PLANE_HEIGHT = 30,60
 PLANE_VEL = 5
 PLANE_HITBOX_RADIUS = 8
+PLANE_WARNING_RADIUS = 20
 PLANE_SIZE = (PLANE_WIDTH, PLANE_HEIGHT)
 PLANE_LEFT_IMAGE  = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'sprites', 'plane', '{}.png'.format(2))), PLANE_SIZE)
 PLANE_STAND_IMAGE = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'sprites', 'plane', '{}.png'.format(3))), PLANE_SIZE)
@@ -32,6 +31,11 @@ BULLET_RADIUS = 5
 BULLET_VEL = 5
 MAX_BULLETS = 100
 COLL_TOLERANCE = 1
+
+# Score
+DEAD_PUNISH = -100
+WARNING_PUNISH = -0.1
+SURVIVE_SCORE = 0.1
 
 # Colors
 WHITE  = (255, 255, 255)
