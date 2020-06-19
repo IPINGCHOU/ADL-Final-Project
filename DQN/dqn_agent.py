@@ -24,11 +24,11 @@ RESIZE = True
 RESIZE_SIZE = (80,80)
 
 # model settings
-MEMORY_CAPACITY = 20000
+MEMORY_CAPACITY = 10000
 TRAINING_START = 4096
 BATCH_SIZE = 2048
-TARGET_UPDATE_FREQ = 10
-LEARNING_RATE = 1e-02
+TARGET_UPDATE_FREQ = 1000
+LEARNING_RATE = 5e-04
 
 class DQN(nn.Module):
     '''
@@ -39,8 +39,14 @@ class DQN(nn.Module):
         self.conv1 = nn.Conv2d(channels, 32, kernel_size=8, stride=3)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
         self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=2)
-        self.fc = nn.Linear(1600, 512)
-        self.head = nn.Linear(512, num_actions)
+
+        self.fc1 = nn.Linear(1600, 512)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, 128)
+        self.fc4 = nn.Linear(128, 64)
+        self.advantage = nn.Linear(64, num_actions)
+        self.value = nn.Linear(64, 1)
+        # self.head = nn.Linear(64, num_actions)
 
         self.bn1 = nn.BatchNorm2d(32)
         self.bn2 = nn.BatchNorm2d(64)
@@ -54,9 +60,15 @@ class DQN(nn.Module):
         x = self.relu(self.bn2(self.conv2(x)))
         x = self.relu(self.bn3(self.conv3(x)))
         #  print(x.shape)
-        x = self.lrelu(self.fc(x.view(x.size(0), -1)))
-        q = self.head(x)
-        return q
+        x = self.lrelu(self.fc1(x.view(x.size(0), -1)))
+        x = self.lrelu(self.fc2(x))
+        x = self.lrelu(self.fc3(x))
+        x = self.lrelu(self.fc4(x))
+        adv = self.advantage(x)
+        v = self.value(x)
+
+        # q = self.head(x)
+        return v + adv - adv.mean()
 
 class ReplayMemory(object):
     def __init__(self, capacity):
@@ -262,7 +274,7 @@ class AgentDQN:
                 print('Episode: %d | Steps: %d/%d | Avg reward: %f | loss: %f '%
                         (episodes_done_num, self.steps, self.num_timesteps, avg_reward, loss))
                 total_reward = 0
-                if avg_reward > best_avg:
+                if avg_reward > best_avg and self.steps > self.learning_start:
                     self.save('dqn')
                     best_avg = avg_reward
                 np.save('dqn_reward', np.array(record_reward))
