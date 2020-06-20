@@ -13,23 +13,13 @@ from game_models import *
 class GameManager:
     def __init__(self, bullet_mode, explode_mode, plane_show, score_show):
         
-        self.window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        self.clock = pygame.time.Clock()
-        self.score = 0
-        self.run = True
-
-        self.plane = Plane(WINDOW_WIDTH//2, WINDOW_HEIGHT//2)
-        self.bullets = []
-        self.collision = False
-        self.explosion = None
-        self.font = pygame.font.SysFont("comicsans", 15, True)
+        self.reset()
 
         self.bullet_mode = bullet_mode
         self.explode_mode = explode_mode
         self.plane_show = plane_show     
         self.score_show = score_show
-
-        self.dead = False
+        
         self.action_space = 5
         self.obs_resize_shape = [RESIZE_SIZE[0], RESIZE_SIZE[1], 3]
         self.obs_shape = [WINDOW_WIDTH, WINDOW_HEIGHT, 3]
@@ -48,11 +38,13 @@ class GameManager:
         self.clock = pygame.time.Clock()
         self.score = 0
         self.run = True
+
         self.plane = Plane(WINDOW_WIDTH//2, WINDOW_HEIGHT//2)
         self.bullets = []
         self.collision = False
         self.explosion = None
         self.font = pygame.font.SysFont("comicsans", 30, True)
+
         self.dead = False
 
         if resize == False:
