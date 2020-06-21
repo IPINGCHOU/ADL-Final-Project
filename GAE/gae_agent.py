@@ -18,9 +18,9 @@ batch_size = 32
 rw_path = "rw.npy"
 model_path = "best_model"
 is_resize = True
-resize_size = (200, 200)
+resize_size = (160, 160)
 device = "cuda" if torch.cuda.is_available() else "cpu"
-learning_start = 10000
+learning_start = 5000
 
 ppo_clip = 0.2
 ppo_steps = 5
@@ -32,7 +32,7 @@ class MLP(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
         self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=2)
 
-        self.fc1 = nn.Linear(1600, 512)
+        self.fc1 = nn.Linear(7744, 512)
         self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(256, 128)
         self.fc4 = nn.Linear(128, 64)
@@ -92,7 +92,7 @@ class AgentPG:
         
         if mode == "test":
             self.load(self.model_path)
-            
+        
         # discounted reward
         self.gamma = gamma
         self.trace_decay = trace_decay
@@ -184,7 +184,7 @@ class AgentPG:
         
     def train(self):
         st_time = datetime.now()
-        avg_reward = None
+        avg_reward = 0
         bst_reward = -1
         rw_list = []
         
@@ -198,7 +198,7 @@ class AgentPG:
             while(not done):
                 state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(self.device)
                 action = self.make_action(state)
-                state, reward, done, _ = self.env.step(action)
+                state, reward, done, _ = self.env.step(action, resize = is_resize, size = resize_size)
 
                 self.rewards.append(reward)
 
@@ -207,20 +207,25 @@ class AgentPG:
 
             # for logging
             last_reward = np.sum(self.rewards)
-            avg_reward = last_reward if not avg_reward else avg_reward * 0.9 + last_reward * 0.1
-            rw_list.append(avg_reward)
+            avg_reward += last_reward 
+            rw_list.append(last_reward)
 
             if epoch > self.learning_start and epoch % self.display_freq == 0:
+                avg_reward /= self.display_freq
+
+                if avg_reward > bst_reward:
+                    bst_reward = avg_reward
+                    self.save(self.model_path)
+                    
+                    print("Model saved!!")
+                
                 trange.set_postfix(
                     Avg_reward = avg_reward,
                     Bst_reward = bst_reward,
                 )
-
-            if epoch > self.learning_start and avg_reward > bst_reward:
-                bst_reward = avg_reward
-                self.save(self.model_path)
+                
                 np.save(self.rw_path, rw_list)
-                print("Model saved!!")
+                avg_reward = 0
         
         print(f"Cost time: {datetime.now()-st_time}")
         
@@ -259,7 +264,7 @@ class AgentPG:
                 saver.reset()
 
             rewards.append(episode_reward)
-        print('Run %d episodes'%(episodes))
+        print('\nRun %d episodes'%(episodes))
         print('Mean:', np.mean(rewards))
         print('Median:', np.median(rewards))
         print('Saving best reward video')

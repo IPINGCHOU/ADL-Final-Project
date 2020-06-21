@@ -12,7 +12,7 @@ SCORE_SHOW = False
 SCREEN_SHOW = False
 
 # test
-TEST_EPISODES = 30
+TEST_EPISODES = 10
 
 if SCREEN_SHOW == False:
     os.environ["SDL_VIDEODRIVER"] = "dummy"

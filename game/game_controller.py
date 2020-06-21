@@ -96,7 +96,7 @@ class GameManager:
         # self.score += time.time()-start_tick
         in_warning_count = self.in_warning_zone()
 
-        self.score += SURVIVE_SCORE
+        self.score = SURVIVE_SCORE
         # self.score += in_warning_count*WARNING_PUNISH
 
         if self.run == False or self.dead == True:

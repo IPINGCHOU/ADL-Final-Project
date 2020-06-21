@@ -195,15 +195,14 @@ class AgentPG:
         
     def train(self):
         st_time = datetime.now()
-        avg_reward = None
         bst_reward = -1
         rw_list = []
         
         trange = tqdm(range(self.total_epoch), total = self.total_epoch)
 
         for epoch in trange:
+            avg_reward = 0
             state = self.env.reset(resize = is_resize, size = resize_size)
-            
             self.init_game_setting()
             done = False
             while(not done):
@@ -218,20 +217,26 @@ class AgentPG:
 
             # for logging
             last_reward = np.sum(self.rewards)
-            avg_reward = last_reward if not avg_reward else avg_reward * 0.9 + last_reward * 0.1
-            rw_list.append(avg_reward)
+            avg_reward += last_reward 
+            rw_list.append(last_reward)
 
             if epoch > self.learning_start and epoch % self.display_freq == 0:
+                avg_reward /= self.display_freq
+
+                if avg_reward > bst_reward:
+                    bst_reward = avg_reward
+                    self.save(self.model_path)
+                    
+                    print("Model saved!!")
+                
                 trange.set_postfix(
                     Avg_reward = avg_reward,
                     Bst_reward = bst_reward,
                 )
 
-            if epoch > self.learning_start and avg_reward > bst_reward:
-                bst_reward = avg_reward
-                self.save(self.model_path)
                 np.save(self.rw_path, rw_list)
-                print("Model saved!!")
+                avg_reward = 0
+
         
         print(f"Cost time: {datetime.now()-st_time}")
         
@@ -270,7 +275,7 @@ class AgentPG:
                 saver.reset()
 
             rewards.append(episode_reward)
-        print('Run %d episodes'%(episodes))
+        print('\nRun %d episodes'%(episodes))
         print('Mean:', np.mean(rewards))
         print('Median:', np.median(rewards))
         print('Saving best reward video')

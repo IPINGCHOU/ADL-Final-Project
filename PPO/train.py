@@ -2,6 +2,8 @@ import os
 import sys
 sys.path.insert(1, '../game')
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 MODE = 'train'
 BULLET_MODE = 'random'
 EXPOLDE_MODE = False
