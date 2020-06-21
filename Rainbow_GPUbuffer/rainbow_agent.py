@@ -18,26 +18,27 @@ from utils import *
 import sys
 sys.path.insert(1, '../game')
 from game_config import *
+from game_controller import ReplaySaver
 
 #%%
 # h-para
 DEVICE = 'cuda:0'
-EPS_START = 0.9
-EPS_END = 0.05
-EPS_DECAY = 200
 REWARD_MULTI = 1
 RESIZE = True
 print(RESIZE_SIZE)
 
 # model settings
-NUM_TIMESTEPS = 1000000
-DISPLAY_FREQ = 10
-SAVE_FREQ = 200000
+NUM_TIMESTEPS = 3000000
+DISPLAY_FREQ = 1
+SAVE_FREQ = 1
 MEMORY_CAPACITY = 10000
-BATCH_SIZE = 512
-TARGET_UPDATE_FREQ = 1000
-LEARNING_RATE = 1e-03
-N_STEP_LEARNING = 10
+BATCH_SIZE = 256
+TARGET_UPDATE_FREQ = 2000
+LEARNING_RATE = 1e-04
+N_STEP_LEARNING = 50
+
+INVINCIBLE = True
+EPISODE_MAX_T = 1000
 
 #%%
 class Network(nn.Module):
@@ -143,7 +144,7 @@ class RainbowAgent:
         # Categorical DQN parameters
         v_min: float = 0.0,
         v_max: float = 200.0,
-        atom_size: int = 51,
+        atom_size: int = 101,
         # N-step Learning
         n_step: int = N_STEP_LEARNING,
         # training
@@ -158,6 +159,7 @@ class RainbowAgent:
         self.num_timesteps = num_timesteps
         self.display_freq = display_freq
         self.save_freq = save_freq
+        self.checkpoint_n = 0
         
         self.env = env
         self.batch_size = batch_size
@@ -167,6 +169,7 @@ class RainbowAgent:
         
         # device: cpu / gpu
         self.device = DEVICE
+        self.invincible = INVINCIBLE
         
         # PER
         # memory for 1-step Learning
@@ -209,7 +212,7 @@ class RainbowAgent:
         self.dqn_target.eval()
         
         # optimizer
-        self.optimizer = optim.Adam(self.dqn.parameters(), lr = LEARNING_RATE)
+        self.optimizer = optim.RMSprop(self.dqn.parameters(), lr = LEARNING_RATE)
 
         # transition to store in memory
         self.transition = list()
@@ -233,8 +236,14 @@ class RainbowAgent:
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
-        next_state, reward, done, _ = self.env.step(action, resize=RESIZE, size = RESIZE_SIZE)
+        next_state, reward, done, end = self.env.step(action, resize=RESIZE, size = RESIZE_SIZE, invincible = self.invincible)
         # print(type(next_state))
+        if done:
+            if self.invincible == True and self.t <= EPISODE_MAX_T:
+                done = False
+            else:
+                done = True
+
         next_state = torch.from_numpy(next_state).permute(2,0,1).unsqueeze(0).type(torch.FloatTensor).to(self.device)
         if not self.is_test:
             self.transition += [reward, next_state, done]
@@ -250,7 +259,7 @@ class RainbowAgent:
             if one_step_transition:
                 self.memory.store(*one_step_transition)
     
-        return next_state, reward, done
+        return next_state, reward, done, end
 
     def update_model(self) -> torch.Tensor:
         """Update the model by gradient descent."""
@@ -302,8 +311,8 @@ class RainbowAgent:
     
     def load(self, load_path):
         print('Load model from', load_path)
-        self.dqn.load_state_dict(torch.load(load_path + 'rainbow_online.cpt'), map_location = DEVICE)
-        self.dqn_target.load_state_dict(torch.load(load_path + 'rainbow_target.cpt'), map_location = DEVICE)
+        self.dqn.load_state_dict(torch.load(load_path + '_online.cpt', map_location = DEVICE))
+        self.dqn_target.load_state_dict(torch.load(load_path + '_target.cpt', map_location = DEVICE))
 
     def train(self):
         """Train the agent."""
@@ -314,6 +323,7 @@ class RainbowAgent:
         episodes_done_num = 0
         best_avg = 0
         record_reward = []
+        losses = []
 
         while(True):
             state = self.env.reset(resize = RESIZE, size = RESIZE_SIZE)
@@ -322,11 +332,13 @@ class RainbowAgent:
             episode_reward = 0
             frame_idx = 0
             loss = 0
+            self.t = 0
             while(not done):
+                self.t += 1
                 frame_idx +=1
                 self.steps += 1
                 action = self.select_action(state)
-                next_state, reward, done = self.step(action)
+                next_state, reward, done, _ = self.step(action)
 
                 state = next_state
                 total_reward += reward
@@ -343,6 +355,7 @@ class RainbowAgent:
                 if len(self.memory) >= self.batch_size:
                     loss = self.update_model()
                     update_cnt += 1
+                    losses.append(loss)
                 
                 # if hard update is needed
                 if update_cnt % self.target_update == 0:
@@ -350,6 +363,7 @@ class RainbowAgent:
 
                 record_reward.append(reward)
 
+            self.t = 0
             if episodes_done_num % self.display_freq == 0:
                 avg_reward = total_reward / self.display_freq
                 print('Episode: %d | Steps: %d/%d | Avg reward: %f | loss: %f '%
@@ -358,30 +372,85 @@ class RainbowAgent:
                 if avg_reward > best_avg and (len(self.memory) >= self.batch_size):
                     self.save('rainbow')
                     best_avg = avg_reward
-                np.save('rainbow_reward', np.array(record_reward))
+                np.save('./checkpoints/rainbow_reward', np.array(record_reward))
+                np.save('./checkpoints/rainbow_losses', np.array(losses))
+
+                if episodes_done_num % SAVE_FREQ == 0:
+                    if episodes_done_num != 0:
+                        self.save('rainbow_checkpoint')
+                    self.validation()
+                    self.is_test = False
+                    self.checkpoint_n += 1
+
 
             episodes_done_num += 1
             if self.steps > self.num_timesteps:
                 self.save('rainbow_final')
                 break
-                
-    def test(self) -> None:
-        """Test the agent."""
-        self.is_test = True
-        
-        state = self.env.reset()
-        done = False
-        score = 0
-        
-        while not done:
-            self.env.render()
-            action = self.select_action(state)
-            next_state, reward, done = self.step(action)
 
-            state = next_state
-            score += reward
+
+    def validation(self):
+        self.is_test = True
+        saver = ReplaySaver()
+        state = self.env.reset(resize = RESIZE, size = RESIZE_SIZE)
+        state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.FloatTensor).to(self.device)
+        done = False
+        total_reward = 0
+        self.invincible = False
+
+        while not done:
+            action = self.select_action(state)
+            state, reward, done, end = self.step(action)
+            total_reward += reward
+            print('\r Now rewards: {}'.format(total_reward), end = '\r')
+            saver.get_current_frame()
         
-        print("score: ", score)
+        saver.save_best()
+        print('Making video...')
+        saver.make_video('./checkpoints/checkpoint_{}.mp4'.format(self.checkpoint_n))
+        print('Validation video made!!')
+        self.invincible = True
+
+    def test(self, episodes = 10, saving_path = './test.mp4', size = (750,750), fps = 30):
+        saver = ReplaySaver()
+        rewards = []
+        best_reward = -np.inf
+        self.is_test = True
+        self.invincible = False
+
+        for i in range(episodes):
+            done = False
+            state = self.env.reset(resize = RESIZE, size = RESIZE_SIZE)
+            state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
+            saver.get_current_frame()
+            episode_reward = 0.0
+
+            # play one game
+            while(not done):
+                action = self.select_action(state)
+                state, reward, done, end = self.step(action)
+                saver.get_current_frame()
+                episode_reward += reward
+                print('\r episode: {} | Now reward: {} '.format(i+1,episode_reward), end = '\r')
+            
+            while(end):
+                _,_,_, end = self.env.step(action)
+                saver.get_current_frame()
+            
+            if episode_reward <= best_reward:
+                saver.reset()
+            else:
+                best_reward = episode_reward
+                saver.save_best()
+                saver.reset()
+
+            rewards.append(episode_reward)
+        print('Run %d episodes'%(episodes))
+        print('Mean:', np.mean(rewards))
+        print('Median:', np.median(rewards))
+        print('Saving best reward video')
+        saver.make_video(path = saving_path, size = size, fps = fps)
+        print('Video saved :)')
 
     def _compute_dqn_loss(self, samples: Dict[str, np.ndarray], gamma: float) -> torch.Tensor:
         """Return categorical dqn loss."""
