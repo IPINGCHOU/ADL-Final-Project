@@ -9,3 +9,4 @@ You can go to config.py to modify some parameters it you want
 ```sh
 python3 main.py
 ```
+有遊戲config,code是寫在ipnb

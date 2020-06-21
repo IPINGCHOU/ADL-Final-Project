@@ -19,7 +19,7 @@ class Plane(object):
     
     def move(self, action):
 
-        action = action[0]
+        # action = action[0]
         # choose image and move
         if action == 0: 
             self.x -= PLANE_VEL
@@ -39,24 +39,28 @@ class Plane(object):
         # boundary limit
         if self.x - PLANE_HITBOX_RADIUS < 0:
             self.x = PLANE_HITBOX_RADIUS
-        if self.x + PLANE_HITBOX_RADIUS > WINOW_WIDTH:
-            self.x = WINOW_WIDTH - PLANE_HITBOX_RADIUS
+        if self.x + PLANE_HITBOX_RADIUS > WINDOW_WIDTH:
+            self.x = WINDOW_WIDTH - PLANE_HITBOX_RADIUS
 
         if self.y - PLANE_HITBOX_RADIUS < 0:
             self.y = PLANE_HITBOX_RADIUS
-        if self.y + PLANE_HITBOX_RADIUS > WINOW_HEIGHT:
-            self.y = WINOW_HEIGHT - PLANE_HITBOX_RADIUS
+        if self.y + PLANE_HITBOX_RADIUS > WINDOW_HEIGHT:
+            self.y = WINDOW_HEIGHT - PLANE_HITBOX_RADIUS
         
         self.hitbox = (self.x, self.y)
 
-    def render(self, window, collision=False):
+    def render(self, window, collision=False, plane_show = True, is_warning = True):
         if not collision:
             x_render = self.x - self.width  / 2
             y_render = self.y - self.height / 2
-            window.blit(self.image, (x_render, y_render))
-        
+            if plane_show == True:
+                window.blit(self.image, (x_render, y_render))
+
         # draw hitbox
-        pygame.draw.circle(window, RED, self.hitbox, PLANE_HITBOX_RADIUS, 2)
+        pygame.draw.circle(window, RED, self.hitbox, PLANE_HITBOX_RADIUS, PLANE_HITBOX_RADIUS)
+        # draw warning circle
+        if is_warning == True:
+            pygame.draw.circle(window, BLUE, self.hitbox, PLANE_WARNING_RADIUS, 3)
 
 class Bullet(object):
     def __init__(self, color, plane_x, plane_y):
@@ -65,11 +69,11 @@ class Bullet(object):
         self.velocity = BULLET_VEL
 
         if random.choice((0,1)) == 0: # bullet come from left or right
-            self.x = random.choice((0,WINOW_WIDTH))
-            self.y = random.uniform(WINOW_HEIGHT, 0)
+            self.x = random.choice((0,WINDOW_WIDTH))
+            self.y = random.uniform(WINDOW_HEIGHT, 0)
         else: # bullet come from top or buttom
-            self.x = random.uniform(WINOW_WIDTH, 0)
-            self.y = random.choice((0, WINOW_HEIGHT))
+            self.x = random.uniform(WINDOW_WIDTH, 0)
+            self.y = random.choice((0, WINDOW_HEIGHT))
 
         x_diff = plane_x - self.x
         y_diff = plane_y - self.y
@@ -84,10 +88,43 @@ class Bullet(object):
     def render(self, window):
         pygame.draw.circle(window, self.color, (int(self.x), int(self.y)), self.radius)
 
+class Bullet_2(object):
+    def __init__(self, color):
+        self.color = color
+        self.radius = BULLET_RADIUS
+        self.x, self.y = 0,0
+        self.angle = 0
+        choice = random.randint(0, 3)
+        if choice == 0:
+            self.x = 1
+            self.y = 1
+            self.angle = random.randint(270, 360)
+        elif choice == 1:
+            self.x = WINDOW_WIDTH -1
+            self.y = 1
+            self.angle = random.randint(180, 270)
+        elif choice == 2:
+            self.x = 1
+            self.y = WINDOW_HEIGHT -1
+            self.angle = random.randint(0, 90)
+        elif choice == 3:
+            self.x = WINDOW_WIDTH -1
+            self.y = WINDOW_HEIGHT -1
+            self.angle = random.randint(90, 180)
+        #random speed
+        self.speed = random.randint(3, 5)
+
+    def move(self):
+        self.x = self.x + math.cos(math.radians(self.angle)) * self.speed
+        self.y = self.y - math.sin(math.radians(self.angle)) * self.speed
+    
+    def render(self, window):
+        pygame.draw.circle(window, self.color, (int(self.x), int(self.y)), self.radius)
+
 class Explode(object):
     def __init__(self, x, y):
-        self.x = x - PLANE_WIDTH / 2
-        self.y = y - PLANE_HEIGHT / 2
+        self.x = x - PLANE_WIDTH
+        self.y = y - PLANE_HEIGHT
         self.tick_counter = 0
         self.ani_counter = 0
         self.length = len(EXPLODE)
