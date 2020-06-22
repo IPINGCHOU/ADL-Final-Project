@@ -18,7 +18,7 @@ batch_size = 32
 rw_path = "rw.npy"
 model_path = "best_model"
 is_resize = True
-resize_size = (160, 160)
+resize_size = (200, 200)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 learning_start = 0
 
@@ -35,7 +35,7 @@ class MLP(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
         self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=2)
 
-        self.fc1 = nn.Linear(7744, 512)
+        self.fc1 = nn.Linear(14400, 512)
         self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(256, 128)
         self.fc4 = nn.Linear(128, 64)
@@ -201,7 +201,7 @@ class AgentPG:
     def train(self):
         st_time = datetime.now()
         avg_reward = 0
-        bst_reward = -1
+        bst_reward = -1e9
         rw_list = []
         
         trange = tqdm(range(self.total_epoch), total = self.total_epoch)
