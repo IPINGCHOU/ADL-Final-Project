@@ -17,12 +17,13 @@ class GameManager:
         self.clock = pygame.time.Clock()
         self.score = 0
         self.run = True
+        self.render_score = 0
 
         self.plane = Plane(WINDOW_WIDTH//2, WINDOW_HEIGHT//2)
         self.bullets = []
         self.collision = False
         self.explosion = None
-        self.font = pygame.font.SysFont("comicsans", 15, True)
+        self.font = pygame.font.SysFont("comicsans", 30, True)
 
         self.bullet_mode = bullet_mode
         self.explode_mode = explode_mode
@@ -77,7 +78,8 @@ class GameManager:
 
         # score 
         if self.score_show == True:
-            self.window.blit(self.font.render(f'Score(s): {self.score}', 1, WHITE), (50, 10))
+            self.render_score += self.score
+            self.window.blit(self.font.render(f'Score(s): {self.render_score}', 1, WHITE), (50, 10))
         
         # update
         pygame.display.update()
