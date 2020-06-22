@@ -22,6 +22,9 @@ resize_size = (160, 160)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 learning_start = 0
 
+INVINCIBLE = True
+EPISODE_MAX_T = 1000
+
 ppo_clip = 0.2
 ppo_steps = 5
 
@@ -85,6 +88,7 @@ class AgentPG:
         self.rw_path = rw_path
         self.device = device
         self.learning_start = learning_start
+        self.invincible = INVINCIBLE
 
         # ppo parameters
         self.ppo_clip = ppo_clip
@@ -181,6 +185,18 @@ class AgentPG:
         value_loss.backward()
         
         self.optimizer.step()
+    
+    def step(self, action):
+        """Take an action and return the response of the env."""
+        next_state, reward, done, end = self.env.step(action, resize=is_resize, size = resize_size, invincible = self.invincible)
+
+        if done:
+            if self.invincible == True and self.t <= EPISODE_MAX_T:
+                done = False
+            else:
+                done = True
+    
+        return next_state, reward, done, end
         
     def train(self):
         st_time = datetime.now()
@@ -195,13 +211,17 @@ class AgentPG:
             
             self.init_game_setting()
             done = False
+            self.t = 0
             while(not done):
+                self.t += 1
                 state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(self.device)
                 action = self.make_action(state)
-                state, reward, done, _ = self.env.step(action, resize = is_resize, size = resize_size)
+                state, reward, done, _ = self.step(action)
+                #state, reward, done, _ = self.env.step(action, resize = is_resize, size = resize_size)
 
                 self.rewards.append(reward)
 
+            self.t = 0
             # update model
             self.update()
 

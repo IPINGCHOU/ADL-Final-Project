@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.insert(1, '../game')
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 MODE = 'test'
 BULLET_MODE = 'random'
