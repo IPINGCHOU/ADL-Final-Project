@@ -14,8 +14,9 @@ lr = 1e-3
 display_freq = 10
 gamma = 0.99
 trace_decay = 0.99
-batch_size = 32
+batch_size = 8
 rw_path = "rw.npy"
+loss_path = "loss.npy"
 model_path = "best_model"
 is_resize = True
 resize_size = (200, 200)
@@ -86,6 +87,7 @@ class AgentPG:
         self.model = ActorCritic(actor, critic).to(device)
         self.model_path = model_path
         self.rw_path = rw_path
+        self.loss_path = loss_path
         self.device = device
         self.learning_start = learning_start
         self.invincible = INVINCIBLE
@@ -176,8 +178,9 @@ class AgentPG:
         r_list = r_list.detach()        
         
         policy_loss = - (adv_list * saved_log_probs).sum()
-    
         value_loss = F.smooth_l1_loss(r_list, v_list).sum()
+        
+        loss = policy_loss.item() + value_loss.item()
             
         self.optimizer.zero_grad()
         
@@ -185,6 +188,7 @@ class AgentPG:
         value_loss.backward()
         
         self.optimizer.step()
+        return loss
     
     def step(self, action):
         """Take an action and return the response of the env."""
@@ -203,6 +207,7 @@ class AgentPG:
         avg_reward = 0
         bst_reward = -1e9
         rw_list = []
+        loss_list = []
         
         trange = tqdm(range(self.total_epoch), total = self.total_epoch)
 
@@ -223,7 +228,8 @@ class AgentPG:
 
             self.t = 0
             # update model
-            self.update()
+            loss = self.update()
+            loss_list.append(loss)
 
             # for logging
             last_reward = np.sum(self.rewards)
@@ -245,6 +251,7 @@ class AgentPG:
                 )
                 
                 np.save(self.rw_path, rw_list)
+                np.save(self.loss_path, loss_list)
                 avg_reward = 0
         
         print(f"Cost time: {datetime.now()-st_time}")

@@ -13,11 +13,12 @@ total_epoch = 10000000
 lr = 1e-3
 display_freq = 10
 gamma = 0.99
-batch_size = 32
-rw_path = "rw_ppo.npy"
-model_path = "ckpt_ppo"
+batch_size = 4
+rw_path = "rw.npy"
+loss_path = "loss.npy"
+model_path = "best_model"
 is_resize = True
-resize_size = (200, 200)
+resize_size = (100, 100)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 learning_start = 0
 
@@ -34,7 +35,7 @@ class MLP(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
         self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=2)
 
-        self.fc1 = nn.Linear(14400, 512)
+        self.fc1 = nn.Linear(2304, 512)
         self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(256, 128)
         self.fc4 = nn.Linear(128, 64)
@@ -85,6 +86,7 @@ class AgentPG:
         self.model = ActorCritic(actor, critic).to(device)
         self.model_path = model_path
         self.rw_path = rw_path
+        self.loss_path = loss_path
         self.device = device
         self.learning_start = learning_start
         self.invincible = INVINCIBLE
@@ -173,6 +175,7 @@ class AgentPG:
         advantage = advantage.detach()
         r_list = r_list.detach()
         
+        loss = 0
         for _ in range(self.ppo_steps):
             #get new log prob of actions for all input states
             action_pred, value_pred = self.model(states)
@@ -189,6 +192,7 @@ class AgentPG:
 
             policy_loss = - torch.min(policy_loss_1, policy_loss_2).mean()
             value_loss = F.smooth_l1_loss(r_list, value_pred).mean()
+            loss += policy_loss.item() + value_loss.item()
 
             self.optimizer.zero_grad()
             
@@ -196,6 +200,8 @@ class AgentPG:
             value_loss.backward()
 
             self.optimizer.step()
+        loss /= self.ppo_steps
+        return loss
         
     def step(self, action):
         """Take an action and return the response of the env."""
@@ -213,6 +219,7 @@ class AgentPG:
         st_time = datetime.now()
         bst_reward = -1e9
         rw_list = []
+        loss_list = []
         
         trange = tqdm(range(self.total_epoch), total = self.total_epoch)
 
@@ -234,7 +241,8 @@ class AgentPG:
 
             self.t = 0
             # update model
-            self.update()
+            loss = self.update()
+            loss_list.append(loss)
 
             # for logging
             last_reward = np.sum(self.rewards)
@@ -256,6 +264,7 @@ class AgentPG:
                 )
 
                 np.save(self.rw_path, rw_list)
+                np.save(self.loss_path, loss_list)
                 avg_reward = 0
 
         
