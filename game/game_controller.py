@@ -92,9 +92,9 @@ class GameManager:
         return in_count
 
     
-    def score_update(self):
+    def score_update(self, invincible):
         # self.score += time.time()-start_tick
-        in_warning_count = self.in_warning_zone()
+        # in_warning_count = self.in_warning_zone()
 
         self.score = SURVIVE_SCORE
         # self.score += in_warning_count*WARNING_PUNISH
@@ -105,13 +105,19 @@ class GameManager:
         if self.collision == True and self.dead == False:
             self.score = DEAD_PUNISH
             self.dead = True
+        
+        if invincible:
+            self.dead = False
 
-    def step(self, actions, resize = True, size = (80,80)):
+    def step(self, actions, resize = True, size = (80,80), invincible = False):
         self.clock.tick(FPS)
 
         for event in pygame.event.get():  # This will loop through a list of any keyboard or mouse events.
             if event.type == pygame.QUIT: # Checks if the red button in the corner of the self.window is clicked
                 self.run = False  # Ends the game loop        
+        
+        if invincible == True:
+            self.collision = False
         
         # check explosion
         if not self.collision:
@@ -127,11 +133,14 @@ class GameManager:
                 if bullet_exist == False:
                     self.bullets.pop(self.bullets.index(bullet))
             
-            while len(self.bullets) < MAX_BULLETS:
+            addin_bullets = 0
+            while len(self.bullets) < MAX_BULLETS and addin_bullets <= MAX_ADDIN_BULLETS:
                 if self.bullet_mode == 'random':
                     self.bullets.append(Bullet_2(YELLOW))
                 elif self.bullet_mode == 'aim':
                     self.bullets.append(Bullet(WHITE, self.plane.x, self.plane.y))
+                addin_bullets += 1
+            addin_bullets = 0
             
             # check collision
             if self.is_collision():
@@ -139,10 +148,14 @@ class GameManager:
                 if self.explode_mode:
                     self.explosion = Explode(self.plane.x, self.plane.y)
                 else:
-                    self.run = False
+                    if invincible == False:
+                        self.run = False
         else:
             # end game
-            if self.explosion.is_stop():
+            if self.explode_mode:
+                if self.explosion.is_stop():
+                    self.run = False
+            else:
                 self.run = False
         
         # update frame
@@ -156,7 +169,7 @@ class GameManager:
             screen_shot = self.resize_state(size)
 
 
-        self.score_update()
+        self.score_update(invincible)
         return screen_shot, self.score, self.collision, self.run
 
 class ReplaySaver:
@@ -175,10 +188,12 @@ class ReplaySaver:
         self.frame_array.append(frame)
     
     def make_video(self, path, size = (750,750), fps = 60):
-        out = cv2.VideoWriter(path,cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
+        out = cv2.VideoWriter(path,cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+        print('Vid length: {}'.format(len(self.best_frame_array)))
         for i in self.best_frame_array:
             i = np.rot90(i,3)
             i = cv2.cvtColor(i, cv2.COLOR_BGR2RGB)
             out.write(i)
-        
+            
+        print('Writing video...')
         out.release()

@@ -10,8 +10,8 @@ from torch.distributions import Categorical
 from game_controller import ReplaySaver
 
 total_epoch = 10000000
-lr = 1e-2
-display_freq = 100
+lr = 1e-3
+display_freq = 10
 gamma = 0.99
 batch_size = 32
 rw_path = "rw_ppo.npy"
@@ -19,7 +19,7 @@ model_path = "ckpt_ppo"
 is_resize = True
 resize_size = (80, 80)
 device = "cuda" if torch.cuda.is_available() else "cpu"
-learning_start = 5000
+learning_start = 0
 
 ppo_clip = 0.2
 ppo_steps = 5
