@@ -11,7 +11,7 @@ from game_config import *
 from game_models import *
 
 class GameManager:
-    def __init__(self, bullet_mode, explode_mode, plane_show, score_show):
+    def __init__(self, bullet_mode, explode_mode, plane_show, score_show, test_mode = False):
         
         self.window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
@@ -29,6 +29,7 @@ class GameManager:
         self.explode_mode = explode_mode
         self.plane_show = plane_show     
         self.score_show = score_show
+        self.test_mode = test_mode
 
         self.dead = False
         self.action_space = 5
@@ -65,6 +66,12 @@ class GameManager:
         # reset 
         self.window.fill((0, 0, 0))
 
+        # border
+        # left up coordinate
+        border_x = WINDOW_WIDTH/2 - BORDER_WIDTH/2
+        border_y = WINDOW_HEIGHT/2 - BORDER_HEIGHT/2
+        pygame.draw.rect(self.window, WHITE, pygame.Rect(int(border_x), int(border_y),BORDER_WIDTH, BORDER_HEIGHT),BORDER_LEN)
+
         # plane
         self.plane.render(self.window, self.collision, self.plane_show)
         
@@ -75,7 +82,7 @@ class GameManager:
         # explosion
         if self.explode_mode and self.collision:
             self.explosion.render(self.window)
-
+        
         # score 
         if self.score_show == True:
             self.render_score += self.score
@@ -144,7 +151,7 @@ class GameManager:
                     self.bullets.pop(self.bullets.index(bullet))
             
             addin_bullets = 0
-            while len(self.bullets) < MAX_BULLETS and addin_bullets <= MAX_ADDIN_BULLETS:
+            while len(self.bullets) < MAX_BULLETS and addin_bullets <= MAX_ADDIN_BULLETS and self.test_mode != True:
                 if self.bullet_mode == 'random':
                     self.bullets.append(Bullet_2(YELLOW))
                 elif self.bullet_mode == 'aim':
