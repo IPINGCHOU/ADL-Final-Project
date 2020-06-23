@@ -73,7 +73,7 @@ class GameManager:
         pygame.draw.rect(self.window, WHITE, pygame.Rect(int(border_x), int(border_y),BORDER_WIDTH, BORDER_HEIGHT),BORDER_LEN)
 
         # plane
-        self.plane.render(self.window, self.collision, self.plane_show)
+        self.plane.render(self.window, self.collision, self.plane_show, is_warning=IS_WARNING)
         
         # bullet
         for bullet in self.bullets:

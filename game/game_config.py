@@ -8,7 +8,7 @@ GAME_FOLDER = os.path.abspath('..')
 WINDOW_WIDTH, WINDOW_HEIGHT = 750, 750
 BORDER_WIDTH, BORDER_HEIGHT = 500,500
 BORDER_LEN = 3
-RESIZE_SIZE = (200,200)
+RESIZE_SIZE = (100,100)
 FPS = 1000
 
 # Plane
@@ -16,7 +16,9 @@ PLANE_WIDTH, PLANE_HEIGHT = 30,60
 PLANE_VEL = 5
 PLANE_HITBOX_RADIUS = 6
 PLANE_WARNING_RADIUS = 20
-PLANE_WARNING_CIRCLE_WIDTH = 0
+PLANE_WARNING_CIRCLE_WIDTH = 3
+IS_WARNING = False
+
 PLANE_SIZE = (PLANE_WIDTH, PLANE_HEIGHT)
 PLANE_LEFT_IMAGE  = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'sprites', 'plane', '{}.png'.format(2))), PLANE_SIZE)
 PLANE_STAND_IMAGE = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'sprites', 'plane', '{}.png'.format(3))), PLANE_SIZE)
