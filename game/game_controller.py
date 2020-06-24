@@ -11,7 +11,7 @@ from game_config import *
 from game_models import *
 
 class GameManager:
-    def __init__(self, bullet_mode, explode_mode, plane_show, score_show):
+    def __init__(self, bullet_mode, explode_mode, plane_show, score_show, test_mode = False):
         
         self.reset()
 
@@ -19,7 +19,8 @@ class GameManager:
         self.explode_mode = explode_mode
         self.plane_show = plane_show     
         self.score_show = score_show
-        
+        self.test_mode = test_mode
+
         self.action_space = 5
         self.obs_resize_shape = [RESIZE_SIZE[0], RESIZE_SIZE[1], 3]
         self.obs_shape = [WINDOW_WIDTH, WINDOW_HEIGHT, 3]
@@ -56,8 +57,14 @@ class GameManager:
         # reset 
         self.window.fill((0, 0, 0))
 
+        # border
+        # left up coordinate
+        border_x = WINDOW_WIDTH/2 - BORDER_WIDTH/2
+        border_y = WINDOW_HEIGHT/2 - BORDER_HEIGHT/2
+        pygame.draw.rect(self.window, WHITE, pygame.Rect(int(border_x), int(border_y),BORDER_WIDTH, BORDER_HEIGHT),BORDER_LEN)
+
         # plane
-        self.plane.render(self.window, self.collision, self.plane_show)
+        self.plane.render(self.window, self.collision, self.plane_show, is_warning=IS_WARNING)
         
         # bullet
         for bullet in self.bullets:
@@ -66,10 +73,11 @@ class GameManager:
         # explosion
         if self.explode_mode and self.collision:
             self.explosion.render(self.window)
-
+        
         # score 
         if self.score_show == True:
-            self.window.blit(self.font.render(f'Score(s): {self.score}', 1, WHITE), (50, 10))
+            self.render_score += self.score
+            self.window.blit(self.font.render(f'Score(s): {self.render_score}', 1, WHITE), (50, 10))
         
         # update
         pygame.display.update()
@@ -134,7 +142,7 @@ class GameManager:
                     self.bullets.pop(self.bullets.index(bullet))
             
             addin_bullets = 0
-            while len(self.bullets) < MAX_BULLETS and addin_bullets <= MAX_ADDIN_BULLETS:
+            while len(self.bullets) < MAX_BULLETS and addin_bullets <= MAX_ADDIN_BULLETS and self.test_mode != True:
                 if self.bullet_mode == 'random':
                     self.bullets.append(Bullet_2(YELLOW))
                 elif self.bullet_mode == 'aim':
