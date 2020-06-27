@@ -5,14 +5,20 @@ import pygame
 GAME_FOLDER = os.path.abspath('..')
 
 # game window
-WINDOW_WIDTH, WINDOW_HEIGHT = 500, 500
+WINDOW_WIDTH, WINDOW_HEIGHT = 750, 750
+BORDER_WIDTH, BORDER_HEIGHT = 500,500
+BORDER_LEN = 3
+RESIZE_SIZE = (100,100)
 FPS = 1000
 
 # Plane
 PLANE_WIDTH, PLANE_HEIGHT = 30,60
-PLANE_VEL = 10
+PLANE_VEL = 5
 PLANE_HITBOX_RADIUS = 6
 PLANE_WARNING_RADIUS = 20
+PLANE_WARNING_CIRCLE_WIDTH = 3
+IS_WARNING = False
+
 PLANE_SIZE = (PLANE_WIDTH, PLANE_HEIGHT)
 PLANE_LEFT_IMAGE  = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'sprites', 'plane', '{}.png'.format(2))), PLANE_SIZE)
 PLANE_STAND_IMAGE = pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER, 'sprites', 'plane', '{}.png'.format(3))), PLANE_SIZE)
@@ -27,14 +33,14 @@ for i in range(15):
     EXPLODE.append(pygame.transform.scale(pygame.image.load(os.path.join(GAME_FOLDER,'sprites','explode','tile{:03}.png'.format(i))), EXPLODE_SIZE))
 
 # Bullets
-BULLET_RADIUS = 4
+BULLET_RADIUS = 5
 BULLET_VEL = 5
-MAX_BULLETS = 45
-COLL_TOLERANCE = 1
+MAX_BULLETS = 100
+COLL_TOLERANCE = 2
+MAX_ADDIN_BULLETS = 1
 
 # Score
-
-DEAD_PUNISH = -500
+DEAD_PUNISH = -100
 WARNING_PUNISH = -1
 SURVIVE_SCORE = 0.1
 

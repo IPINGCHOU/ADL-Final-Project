@@ -11,25 +11,30 @@ from game_config import *
 from game_models import *
 
 class GameManager:
-    def __init__(self, bullet_mode, explode_mode, plane_show, score_show):
+    def __init__(self, bullet_mode, explode_mode, plane_show, score_show, test_mode = False):
         
         self.window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
         self.score = 0
         self.run = True
+        self.render_score = 0
 
         self.plane = Plane(WINDOW_WIDTH//2, WINDOW_HEIGHT//2)
         self.bullets = []
         self.collision = False
         self.explosion = None
-        self.font = pygame.font.SysFont("comicsans", 15, True)
+        self.font = pygame.font.SysFont("comicsans", 30, True)
 
         self.bullet_mode = bullet_mode
         self.explode_mode = explode_mode
         self.plane_show = plane_show     
         self.score_show = score_show
+        self.test_mode = test_mode
 
         self.dead = False
+        self.action_space = 5
+        self.obs_resize_shape = [RESIZE_SIZE[0], RESIZE_SIZE[1], 3]
+        self.obs_shape = [WINDOW_WIDTH, WINDOW_HEIGHT, 3]
 
         # set title 
         pygame.display.set_caption('bullet hell drill')
@@ -61,8 +66,14 @@ class GameManager:
         # reset 
         self.window.fill((0, 0, 0))
 
+        # border
+        # left up coordinate
+        border_x = WINDOW_WIDTH/2 - BORDER_WIDTH/2
+        border_y = WINDOW_HEIGHT/2 - BORDER_HEIGHT/2
+        pygame.draw.rect(self.window, WHITE, pygame.Rect(int(border_x), int(border_y),BORDER_WIDTH, BORDER_HEIGHT),BORDER_LEN)
+
         # plane
-        self.plane.render(self.window, self.collision, self.plane_show)
+        self.plane.render(self.window, self.collision, self.plane_show, is_warning=IS_WARNING)
         
         # bullet
         for bullet in self.bullets:
@@ -71,10 +82,11 @@ class GameManager:
         # explosion
         if self.explode_mode and self.collision:
             self.explosion.render(self.window)
-
+        
         # score 
         if self.score_show == True:
-            self.window.blit(self.font.render(f'Score(s): {self.score}', 1, WHITE), (50, 10))
+            self.render_score += self.score
+            self.window.blit(self.font.render(f'Score(s): {self.render_score}', 1, WHITE), (50, 10))
         
         # update
         pygame.display.update()
@@ -97,12 +109,12 @@ class GameManager:
         return in_count
 
     
-    def score_update(self):
+    def score_update(self, invincible):
         # self.score += time.time()-start_tick
-        in_warning_count = self.in_warning_zone()
+        # in_warning_count = self.in_warning_zone()
 
-        self.score += SURVIVE_SCORE
-        self.score += in_warning_count*WARNING_PUNISH
+        self.score = SURVIVE_SCORE
+        # self.score += in_warning_count*WARNING_PUNISH
 
         if self.run == False or self.dead == True:
             self.score = 0
@@ -110,13 +122,19 @@ class GameManager:
         if self.collision == True and self.dead == False:
             self.score = DEAD_PUNISH
             self.dead = True
+        
+        if invincible:
+            self.dead = False
 
-    def step(self, actions, resize = True, size = (80,80)):
+    def step(self, actions, resize = True, size = (80,80), invincible = False):
         self.clock.tick(FPS)
 
         for event in pygame.event.get():  # This will loop through a list of any keyboard or mouse events.
             if event.type == pygame.QUIT: # Checks if the red button in the corner of the self.window is clicked
                 self.run = False  # Ends the game loop        
+        
+        if invincible == True:
+            self.collision = False
         
         # check explosion
         if not self.collision:
@@ -132,11 +150,14 @@ class GameManager:
                 if bullet_exist == False:
                     self.bullets.pop(self.bullets.index(bullet))
             
-            while len(self.bullets) < MAX_BULLETS:
+            addin_bullets = 0
+            while len(self.bullets) < MAX_BULLETS and addin_bullets <= MAX_ADDIN_BULLETS and self.test_mode != True:
                 if self.bullet_mode == 'random':
                     self.bullets.append(Bullet_2(YELLOW))
                 elif self.bullet_mode == 'aim':
                     self.bullets.append(Bullet(WHITE, self.plane.x, self.plane.y))
+                addin_bullets += 1
+            addin_bullets = 0
             
             # check collision
             if self.is_collision():
@@ -144,10 +165,14 @@ class GameManager:
                 if self.explode_mode:
                     self.explosion = Explode(self.plane.x, self.plane.y)
                 else:
-                    self.run = False
+                    if invincible == False:
+                        self.run = False
         else:
             # end game
-            if self.explosion.is_stop():
+            if self.explode_mode:
+                if self.explosion.is_stop():
+                    self.run = False
+            else:
                 self.run = False
         
         # update frame
@@ -161,7 +186,7 @@ class GameManager:
             screen_shot = self.resize_state(size)
 
 
-        self.score_update()
+        self.score_update(invincible)
         return screen_shot, self.score, self.collision, self.run
 
 class ReplaySaver:
@@ -180,10 +205,12 @@ class ReplaySaver:
         self.frame_array.append(frame)
     
     def make_video(self, path, size = (750,750), fps = 60):
-        out = cv2.VideoWriter(path,cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
+        out = cv2.VideoWriter(path,cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+        print('Vid length: {}'.format(len(self.best_frame_array)))
         for i in self.best_frame_array:
             i = np.rot90(i,3)
             i = cv2.cvtColor(i, cv2.COLOR_BGR2RGB)
             out.write(i)
-        
+            
+        print('Writing video...')
         out.release()
