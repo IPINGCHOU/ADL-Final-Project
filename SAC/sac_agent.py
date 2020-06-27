@@ -32,9 +32,11 @@ RESIZE_SIZE = (80,80)
 # model settings
 MEMORY_CAPACITY = 20000
 TRAINING_START = 2048
-BATCH_SIZE = 1024
+BATCH_SIZE = 128
 #TARGET_UPDATE_FREQ = 10
 #LEARNING_RATE = 1e-02
+INVINCIBLE = True
+EPISODE_MAX = 1000
 
 def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
     """Init uniform parameters on the single layer."""
@@ -254,7 +256,7 @@ class AgentSAC:
         self.gamma = 0.99
 
         # training hyperparameters
-        self.train_freq = 1 # frequency to train the online network
+        self.train_freq = 1 # frequency to train the network
         self.learning_start = TRAINING_START # before we start to update our network, we wait a few steps first to fill the replay.
         self.batch_size = BATCH_SIZE
         self.num_timesteps = 3000000 # total training steps
@@ -368,7 +370,7 @@ class AgentSAC:
         mask = int(non_final_mask ==  'true')
         q_1_pred = self.qf_1(state, action)
         q_2_pred = self.qf_2(state, action)
-        v_target = self.vf_target(non_final_next_state)
+        v_target = self.vf_target(non_final_next_state.contiguous())
         q_target = reward.unsqueeze(1) + self.gamma * v_target *mask
         qf_1_loss = F.mse_loss(q_1_pred, q_target.detach())
         qf_2_loss = F.mse_loss(q_2_pred, q_target.detach())
@@ -426,22 +428,35 @@ class AgentSAC:
 
     def train(self):
         record_reward = []
+        record_loss = []
         episodes_done_num = 0 # passed episodes
         total_reward = 0 # compute average reward
         losses = (0,0,0,0)
         actor_losses, qf_losses, vf_losses, alpha_losses = [], [], [], []
-        best_avg = 0
+        best_avg = -np.inf
         while(True):
-            state = self.env.reset(resize = RESIZE, size = RESIZE_SIZE)
+            #state = self.env.reset(resize = RESIZE, size = RESIZE_SIZE)
             # State: (80,80,4) --> (1,4,80,80)
-            state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
+            #state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
+            self.env.reset(resize = RESIZE, size = RESIZE_SIZE)#
+            
+            frame,a,b,c= self.env.step(1, resize = RESIZE, size=RESIZE_SIZE)
+            next_frame,a,b,c= self.env.step(1, resize = RESIZE, size=RESIZE_SIZE)
+            frame= torch.from_numpy(frame).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
+            next_frame = torch.from_numpy(next_frame).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
+            state=next_frame-frame
+            frame=next_frame
+            #改成畫面減上一畫面，先random走兩步，得到第一個state
+
             done = False
             episode_reward = 0
-            while(not done):
+            #while(not done):
+            for i in range(1000):## 無敵模式episode = 1000 steps
+
+                state = state.contiguous()##不加會噴錯
                 # select and perform action
                 action = self.make_action(state).to(DEVICE)
-                
-                next_state, reward, done, _ = self.env.step(action.item(), resize = RESIZE, size = RESIZE_SIZE)
+                next_frame, reward, done, _ = self.env.step(action.item(), resize = RESIZE, size = RESIZE_SIZE, invincible = INVINCIBLE)##next_state to next_frame
                 total_reward += (reward * REWARD_MULTI)
                 episode_reward += (reward * REWARD_MULTI)
                 print('\r Now reward: {}'.format(episode_reward), end = '\r')
@@ -449,15 +464,21 @@ class AgentSAC:
                 reward = torch.tensor([reward]).type(torch.cuda.FloatTensor).to(DEVICE)
 
                 # process new state
-                next_state = torch.from_numpy(next_state).permute(2,0,1).type(torch.cuda.FloatTensor).unsqueeze(0)
-                next_state = next_state.to(DEVICE)
+                #next_state = torch.from_numpy(next_state).permute(2,0,1).type(torch.cuda.FloatTensor).unsqueeze(0)
+                #next_state = next_state.to(DEVICE)
+                next_frame = torch.from_numpy(next_frame).permute(2,0,1).type(torch.cuda.FloatTensor).unsqueeze(0)#
+                next_frame = next_frame.to(DEVICE)#
                 
+                #算出next_state
+                next_state = next_frame-frame#
 
                 # TODO: store the transition in memory
                 self.memory.push(state, action, next_state, reward)
 
                 # move to the next state
                 state = next_state
+                frame = next_frame#
+
                 # Perform one step of the optimization
                 if self.steps > self.learning_start and self.steps % self.train_freq == 0:
                     losses = self.update()
@@ -472,28 +493,40 @@ class AgentSAC:
                 
 
                 self.steps += 1
-                record_reward.append(reward.item())
+
+            record_reward.append(episode_reward)##每個episode存reward
+            record_loss.append(float(losses[2]))##每個episode存loss
 
             if episodes_done_num % self.display_freq == 0:
                 avg_reward = total_reward / self.display_freq
+
                 print('Episode: %d | Steps: %d/%d | Avg reward: %f | loss: %f '%
                         (episodes_done_num, self.steps, self.num_timesteps, avg_reward, losses[2]))
                 total_reward = 0
                 if avg_reward > best_avg:
-                    self.save('sac')
+                    #self.save('sac')
+                    
                     best_avg = avg_reward
-                np.save('sac_reward', np.array(record_reward))
+                #np.save('sac_reward', np.array(record_reward))
+                #np.save('sac_loss', np.array(record_loss))
 
             episodes_done_num += 1
-            if self.steps > self.num_timesteps:
+            #if self.steps > self.num_timesteps:
+            #    self.save('sac_final')
+            #    break
+
+            if episodes_done_num > EPISODE_MAX:
+                np.save('sac_reward', np.array(record_reward))
+                np.save('sac_loss', np.array(record_loss))
                 self.save('sac_final')
                 break
-        self.save('sac')
+
+        #self.save('sac')
 
     def test(self, episodes = 10, saving_path = './test.mp4', size = (750,750), fps = 30):
         saver = ReplaySaver()
         rewards = []
-        best_reward = 0
+        best_reward = -np.inf
 
         
         for i in range(episodes):
@@ -530,6 +563,7 @@ class AgentSAC:
         print('Run %d episodes'%(episodes))
         print('Mean:', np.mean(rewards))
         print('Median:', np.median(rewards))
+        print('Best:', best_reward)
         print('Saving best reward video')
         saver.make_video(path = saving_path, size = size, fps = fps)
         print('Video saved :)')
@@ -558,7 +592,7 @@ class AgentSAC:
         blue_mask = np.ones_like(I)
         blue_mask[:, :, :] = (0, 0, 255)
         red_mask = np.ones_like(I)
-        red_mask[:, :, :] = (255, 0, 0)
+        red_mask[:, :, :] = (0, 0, 255)
 
         # post processing + normalize
         saliency = (saliency.squeeze().data).cpu().numpy()[:, :, None]

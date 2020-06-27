@@ -37,15 +37,17 @@ class Plane(object):
             self.image = PLANE_STAND_IMAGE
 
         # boundary limit
-        if self.x - PLANE_HITBOX_RADIUS < 0:
-            self.x = PLANE_HITBOX_RADIUS
-        if self.x + PLANE_HITBOX_RADIUS > WINDOW_WIDTH:
-            self.x = WINDOW_WIDTH - PLANE_HITBOX_RADIUS
+        border_x = int(WINDOW_WIDTH/2 - BORDER_WIDTH/2)
+        border_y = int(WINDOW_HEIGHT/2 - BORDER_HEIGHT/2)
+        if self.x - (PLANE_HITBOX_RADIUS + border_x) < 0:
+            self.x = PLANE_HITBOX_RADIUS + border_x
+        if self.x + PLANE_HITBOX_RADIUS > WINDOW_WIDTH - border_x:
+            self.x = WINDOW_WIDTH - PLANE_HITBOX_RADIUS - border_x
 
-        if self.y - PLANE_HITBOX_RADIUS < 0:
-            self.y = PLANE_HITBOX_RADIUS
-        if self.y + PLANE_HITBOX_RADIUS > WINDOW_HEIGHT:
-            self.y = WINDOW_HEIGHT - PLANE_HITBOX_RADIUS
+        if self.y - (PLANE_HITBOX_RADIUS + border_y) < 0:
+            self.y = PLANE_HITBOX_RADIUS + border_y
+        if self.y + PLANE_HITBOX_RADIUS > WINDOW_HEIGHT - border_y:
+            self.y = WINDOW_HEIGHT - PLANE_HITBOX_RADIUS - border_y
         
         self.hitbox = (self.x, self.y)
 
@@ -60,7 +62,7 @@ class Plane(object):
         pygame.draw.circle(window, RED, self.hitbox, PLANE_HITBOX_RADIUS, PLANE_HITBOX_RADIUS)
         # draw warning circle
         if is_warning == True:
-            pygame.draw.circle(window, BLUE, self.hitbox, PLANE_WARNING_RADIUS, 3)
+            pygame.draw.circle(window, BLUE, self.hitbox, PLANE_WARNING_RADIUS, PLANE_WARNING_CIRCLE_WIDTH)
 
 class Bullet(object):
     def __init__(self, color, plane_x, plane_y):

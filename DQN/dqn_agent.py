@@ -30,8 +30,10 @@ RESIZE_SIZE = (80,80)
 MEMORY_CAPACITY = 20000
 TRAINING_START = 4096
 BATCH_SIZE = 2048
-TARGET_UPDATE_FREQ = 10
-LEARNING_RATE = 1e-02
+TARGET_UPDATE_FREQ = 2000
+LEARNING_RATE = 1e-04
+INVINCIBLE = True
+EPISODE_MAX = 1000
 
 class DQN(nn.Module):
     '''
@@ -217,7 +219,7 @@ class AgentDQN:
         # select their best rewards with man(1)[0]
         # state value or 0 in case the state was final
         next_state_values = torch.zeros(self.batch_size, device = DEVICE)
-        next_state_values[non_final_mask] = self.target_net(non_final_next_states).max(1)[0].detach()
+        next_state_values[non_final_mask] = self.target_net(non_final_next_states.contiguous()).max(1)[0].detach()
         # compute the expected Q values
         expected_state_action_values = (next_state_values * self.GAMMA) + reward_batch
 
@@ -237,20 +239,34 @@ class AgentDQN:
 
     def train(self):
         record_reward = []
+        record_loss = []
         episodes_done_num = 0 # passed episodes
         total_reward = 0 # compute average reward
         loss = 0
-        best_avg = 0
+        best_avg = -np.inf
         while(True):
-            state = self.env.reset(resize = RESIZE, size = RESIZE_SIZE)
+            #state = self.env.reset(resize = RESIZE, size = RESIZE_SIZE)
             # State: (80,80,4) --> (1,4,80,80)
-            state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
+            #state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
+            self.env.reset(resize = RESIZE, size = RESIZE_SIZE)#
+            
+            frame,a,b,c= self.env.step(1, resize = RESIZE, size=RESIZE_SIZE)
+            next_frame,a,b,c= self.env.step(1, resize = RESIZE, size=RESIZE_SIZE)
+            frame= torch.from_numpy(frame).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
+            next_frame = torch.from_numpy(next_frame).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
+            state=next_frame-frame
+            frame=next_frame
+            #改成畫面減上一畫面，先random走兩步，得到第一個state
+
             done = False
             episode_reward = 0
-            while(not done):
+            #while(not done):
+            for i in range(1000):## 無敵模式episode = 1000 steps
+                
+                state = state.contiguous()##不加會噴錯
                 # select and perform action
                 action = self.make_action(state).to(DEVICE)
-                next_state, reward, done, _ = self.env.step(action.item(), resize = RESIZE, size = RESIZE_SIZE)
+                next_frame, reward, done, _ = self.env.step(action.item(), resize = RESIZE, size = RESIZE_SIZE, invincible = INVINCIBLE)##next_state to next_frame
                 total_reward += (reward * REWARD_MULTI)
                 episode_reward += (reward * REWARD_MULTI)
                 print('\r Now reward: {}'.format(episode_reward), end = '\r')
@@ -258,15 +274,24 @@ class AgentDQN:
                 reward = torch.tensor([reward]).type(torch.cuda.FloatTensor).to(DEVICE)
 
                 # process new state
-                next_state = torch.from_numpy(next_state).permute(2,0,1).type(torch.cuda.FloatTensor).unsqueeze(0)
-                next_state = next_state.to(DEVICE)
+                #next_state = torch.from_numpy(next_state).permute(2,0,1).type(torch.cuda.FloatTensor).unsqueeze(0)
+                #next_state = next_state.to(DEVICE)
+                next_frame = torch.from_numpy(next_frame).permute(2,0,1).type(torch.cuda.FloatTensor).unsqueeze(0)#
+                next_frame = next_frame.to(DEVICE)#
+
                 # reward = reward.to(DEVICE)
+
+                #算出next_state
+                next_state = next_frame-frame#
 
                 # TODO: store the transition in memory
                 self.memory.push(state, action, next_state, reward)
 
+
                 # move to the next state
                 state = next_state
+                frame = next_frame#
+
                 # Perform one step of the optimization
                 if self.steps > self.learning_start and self.steps % self.train_freq == 0:
                     loss = self.update()
@@ -280,28 +305,41 @@ class AgentDQN:
                 #     self.save('dqn')
 
                 self.steps += 1
-                record_reward.append(reward.item())
+
+            record_reward.append(episode_reward)##每個episode存reward
+            record_loss.append(loss)##每個episode存loss
 
             if episodes_done_num % self.display_freq == 0:
                 avg_reward = total_reward / self.display_freq
+
                 print('Episode: %d | Steps: %d/%d | Avg reward: %f | loss: %f '%
                         (episodes_done_num, self.steps, self.num_timesteps, avg_reward, loss))
                 total_reward = 0
                 if avg_reward > best_avg:
-                    self.save('dqn')
+                    #self.save('dqn')
                     best_avg = avg_reward
-                np.save('dqn_reward', np.array(record_reward))
+                #np.save('dqn_reward', np.array(record_reward))
+                #np.save('dqn_loss', np.array(record_loss))
 
             episodes_done_num += 1
-            if self.steps > self.num_timesteps:
+            #if self.steps > self.num_timesteps:
+            #    self.save('dqn_final')
+            #    break
+
+            if episodes_done_num > EPISODE_MAX:
+                np.save('dqn_reward', np.array(record_reward))
+                np.save('dqn_loss', np.array(record_loss))
                 self.save('dqn_final')
                 break
-        self.save('dqn')
+
+
+
+        #self.save('dqn')
 
     def test(self, episodes = 10, saving_path = './test.mp4', size = (750,750), fps = 30):
         saver = ReplaySaver()
         rewards = []
-        best_reward = 0
+        best_reward = -np.inf
 
         
         for i in range(episodes):
@@ -317,7 +355,8 @@ class AgentDQN:
                 state, reward, done, end = self.env.step(action, resize= RESIZE, size = RESIZE_SIZE)
                 state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.cuda.FloatTensor).to(DEVICE)
 
-                self.render_saliency(self.env, state, self.online_net, action)##
+                #self.render_saliency(self.env, state, self.online_net, action)##
+                
 
                 saver.get_current_frame()
                 episode_reward += reward
@@ -338,6 +377,7 @@ class AgentDQN:
         print('Run %d episodes'%(episodes))
         print('Mean:', np.mean(rewards))
         print('Median:', np.median(rewards))
+        print('Best:', best_reward)
         print('Saving best reward video')
         saver.make_video(path = saving_path, size = size, fps = fps)
         print('Video saved :)')
@@ -357,7 +397,7 @@ class AgentDQN:
         blue_mask = np.ones_like(I)
         blue_mask[:, :, :] = (0, 0, 255)
         red_mask = np.ones_like(I)
-        red_mask[:, :, :] = (255, 0, 0)
+        red_mask[:, :, :] = (0, 0, 255)
 
         # post processing + normalize
         saliency = (saliency.squeeze().data).cpu().numpy()[:, :, None]

@@ -19,7 +19,7 @@ SCORE_SHOW = False
 SCREEN_SHOW = True
 
 # test
-TEST_EPISODES = 3
+TEST_EPISODES = 30
 
 
 if SCREEN_SHOW == False:
