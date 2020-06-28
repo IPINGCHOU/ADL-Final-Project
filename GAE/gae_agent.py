@@ -10,7 +10,7 @@ from torch.distributions import Categorical
 from game_controller import ReplaySaver
 
 total_epoch = 10000000
-lr = 1e-3
+lr = 1e-5
 display_freq = 10
 gamma = 0.99
 trace_decay = 0.99
@@ -54,10 +54,10 @@ class MLP(nn.Module):
         x = self.relu(self.bn2(self.conv2(x)))
         x = self.relu(self.bn3(self.conv3(x)))
 
-        x = self.lrelu(self.fc1(x.view(x.size(0), -1)))
-        x = self.lrelu(self.fc2(x))
-        x = self.lrelu(self.fc3(x))
-        x = self.lrelu(self.fc4(x))
+        x = self.relu(self.fc1(x.view(x.size(0), -1)))
+        x = self.relu(self.fc2(x))
+        x = self.relu(self.fc3(x))
+        x = self.relu(self.fc4(x))
 
         x = self.out(x)
         
@@ -108,8 +108,8 @@ class AgentPG:
         self.display_freq = display_freq # frequency to display training progress
 
         # optimizer
-        # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
-        self.optimizer = torch.optim.RMSprop(self.model.parameters(), lr=lr)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        # self.optimizer = torch.optim.RMSprop(self.model.parameters(), lr=lr)
 
         # saved rewards and actions
         self.rewards, self.saved_log_probs, self.value_list, self.actions, self.states = [], [], [], [], []
@@ -259,7 +259,7 @@ class AgentPG:
     def test(self, episodes = 10, saving_path = './test.mp4', size = (750,750), fps = 60):
         saver = ReplaySaver()
         rewards = []
-        best_reward = 0
+        best_reward = -1234567890
 
         
         for i in range(episodes):
