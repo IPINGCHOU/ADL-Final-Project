@@ -34,6 +34,7 @@ The game parameters were setted in ./game/game_config.py, which includes hitbox 
 ## Rainbow
 There are two Rainbow folders, one with CPU replay buffer called "Rainbow" and one with GPU replay buffer called "Rainbow_GPUbuffer", both of them could work properly by running the command below:
 ```bash=
+cd ./Rainbow_GPUbuffer
 python train_rainbow.py
 ```
 Don't forget to generate a folder named './checkpoints' for storing the temp result game-play videos during the training, the losses and rewards will also be stored in this folder.
