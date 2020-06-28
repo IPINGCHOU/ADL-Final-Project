@@ -17,7 +17,7 @@ BULLET_MODE = 'random'
 EXPOLDE_MODE = False
 PLANE_SHOW = False
 SCORE_SHOW = False
-SCREEN_SHOW = True
+SCREEN_SHOW = False
 
 if SCREEN_SHOW == False:
     os.environ["SDL_VIDEODRIVER"] = "dummy"

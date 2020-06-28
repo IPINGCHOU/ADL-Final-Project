@@ -9,21 +9,12 @@ import time
 import cv2
 from game_config import *
 from game_models import *
+import skvideo.io
 
 class GameManager:
     def __init__(self, bullet_mode, explode_mode, plane_show, score_show, test_mode = False):
         
-        self.window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        self.clock = pygame.time.Clock()
-        self.score = 0
-        self.run = True
-        self.render_score = 0
-
-        self.plane = Plane(WINDOW_WIDTH//2, WINDOW_HEIGHT//2)
-        self.bullets = []
-        self.collision = False
-        self.explosion = None
-        self.font = pygame.font.SysFont("comicsans", 30, True)
+        self.reset()
 
         self.bullet_mode = bullet_mode
         self.explode_mode = explode_mode
@@ -214,3 +205,17 @@ class ReplaySaver:
             
         print('Writing video...')
         out.release()
+        # out = cv2.VideoWriter(path,cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+        #rate = '60'
+        #writer = skvideo.io.FFmpegWriter(path, inputdict = {'-r':rate}, outputdict={'-r':rate})
+        #print('Vid length: {}'.format(len(self.best_frame_array)))
+        #for i in self.best_frame_array:
+        #    i = np.rot90(i,3)
+        #    # i = cv2.cvtColor(i, cv2.COLOR_BGR2RGB)
+        #    writer.writeFrame(i)
+        #    # out.write(i)
+        #    
+        #print('Writing video...')
+        #writer.close()
+        # out.release()
+

@@ -173,7 +173,6 @@ class AgentDQN:
         if sample > eps_threshold:
             with torch.no_grad():
                 # if True, return the move with highest reward
-                #print(self.online_net(state).size())
                 action = self.online_net(state).max(1)[1].view(1,1)
 
         else:
@@ -428,7 +427,6 @@ class AgentDQN:
         env.window.blit(surf, (0,0))
 
         pygame.display.update()
-            
 
 
 

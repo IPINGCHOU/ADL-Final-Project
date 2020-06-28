@@ -16,7 +16,7 @@ BULLET_MODE = 'random'
 EXPOLDE_MODE = True
 PLANE_SHOW = False
 SCORE_SHOW = False
-SCREEN_SHOW = True
+SCREEN_SHOW = False
 
 # test
 TEST_EPISODES = 30
