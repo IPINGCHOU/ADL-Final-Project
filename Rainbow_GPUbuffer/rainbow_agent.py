@@ -28,26 +28,75 @@ RESIZE = True
 print(RESIZE_SIZE)
 
 # model settings
-NUM_TIMESTEPS = 3000000
+NUM_TIMESTEPS = 10000000000
 DISPLAY_FREQ = 1
 SAVE_FREQ = 1
-MEMORY_CAPACITY = 10000
-BATCH_SIZE = 256
+MEMORY_CAPACITY = 20000
+BATCH_SIZE = 512
 TARGET_UPDATE_FREQ = 2000
-LEARNING_RATE = 1e-04
-N_STEP_LEARNING = 50
+LEARNING_RATE = 1e-05
+N_STEP_LEARNING = 0
+MAX_FRACTION_FRAME = 500000
+
+EPS_START = 0.99
+EPS_END = 0.05
+EPS_DECAY = 200000
+IS_EPS = True
 
 INVINCIBLE = True
+VALID_INVINCIBLE = True
 EPISODE_MAX_T = 1000
+VALID_MAX_T = 500
 
 #%%
+# def double_conv(in_channels, out_channels):
+#     return nn.Sequential(
+#         nn.Conv2d(in_channels, out_channels, 3, padding=1),
+#         nn.ReLU(inplace=True),
+#         nn.BatchNorm2d(out_channels),
+#         nn.Conv2d(out_channels, out_channels, 3, padding=1),
+#         nn.ReLU(inplace=True),
+#         nn.BatchNorm2d(out_channels)
+#     ) 
+
+# def dilation_conv(in_channels, out_channels, dilation):
+#     return nn.Sequential(
+#         nn.ZeroPad2d(dilation),
+#         nn.Conv2d(in_channels, out_channels, kernel_size = 3, stride = 1, padding = 0, dilation = dilation),
+#         nn.ReLU(inplace = True)
+#     )
+
+# class ResidualBlock(nn.Module):
+#     def __init__(self, in_channels, out_channels, stride=1, downsample=None):
+#         super(ResidualBlock, self).__init__()
+#         self.conv1 = conv3x3(in_channels, out_channels, stride)
+#         self.bn1 = nn.BatchNorm2d(out_channels)
+#         self.relu = nn.ReLU(inplace=True)
+#         self.conv2 = conv3x3(out_channels, out_channels)
+#         self.bn2 = nn.BatchNorm2d(out_channels)
+#         self.downsample = downsample
+
+#         def forward(self, x):
+#             residual = x
+#             out = self.conv1(x)
+#             out = self.bn1(out)
+#             out = self.relu(out)
+#             out = self.conv2(out)
+#             out = self.bn2(out)
+#             if self.downsample:
+#                 residual = self.downsample(x)
+#             out += residual
+#             out = self.relu(out)
+#             return out
+
 class Network(nn.Module):
     def __init__(
         self, 
         channels: int, 
         out_dim: int, 
         atom_size: int, 
-        support: torch.Tensor
+        support: torch.Tensor,
+        NoisyNet
     ):
         """Initialization."""
         super(Network, self).__init__()
@@ -57,62 +106,169 @@ class Network(nn.Module):
         self.atom_size = atom_size
         
         # set advantage layer
-        self.advantage_hidden_layer = NoisyLinear(128, 128)
-        self.advantage_layer = NoisyLinear(128, out_dim * atom_size)
+        if IS_EPS == False:
+            self.advantage_hidden_layer = NoisyNet(128, 128)
+            self.advantage_layer = NoisyNet(128, out_dim * atom_size)
 
-        # set value layer
-        self.value_hidden_layer = NoisyLinear(128, 128)
-        self.value_layer = NoisyLinear(128, atom_size)
+            # set value layer
+            self.value_hidden_layer = NoisyNet(128, 128)
+            self.value_layer = NoisyNet(128, atom_size)
+        else:
+            self.advantage_hidden_layer = nn.Linear(128,128)
+            self.advantage_layer = nn.Linear(128, out_dim * atom_size)
+            self.value_hidden_layer = nn.Linear(128,128)
+            self.value_layer = nn.Linear(128, atom_size)
 
-        # for features
-        self.conv1 = nn.Conv2d(channels, 32, kernel_size=6, stride=4, padding = 2)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=5, stride=3, padding = 1)
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding = 1)
-        self.conv4 = nn.Conv2d(128, 256, kernel_size=3, stride=2)
-        self.conv5 = nn.Conv2d(256, 256, kernel_size=2, stride=1)
+        # # for features
+        self.output_kernel = 3
+        self.maxpool = nn.MaxPool2d(2)
+        self.conv1 = nn.Conv2d(channels, 32, kernel_size=7, stride=3, padding = 0)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=1, padding = 0)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, stride=1, padding = 0)
+        self.top_layer = nn.Conv2d(128, self.output_kernel, kernel_size = 1, stride = 1)
+
+        self.latlayer3 = nn.Conv2d(128,self.output_kernel,1,1)
+        self.latlayer2 = nn.Conv2d(64,self.output_kernel,1,1)
+        self.latlayer1 = nn.Conv2d(32,self.output_kernel,1,1)
+
+        self.smooth3 = nn.Conv2d(3,3, kernel_size = 3, stride = 1, padding = 1)
+        self.smooth2 = nn.Conv2d(3,3, kernel_size = 3, stride = 1, padding = 1)
+        self.smooth1 = nn.Conv2d(3,3, kernel_size = 3, stride = 1, padding = 1)
 
         self.bn1 = nn.BatchNorm2d(32)
         self.bn2 = nn.BatchNorm2d(64)
         self.bn3 = nn.BatchNorm2d(128)
-        self.bn4 = nn.BatchNorm2d(256)
-        self.bn5 = nn.BatchNorm2d(256)
+        # for fcn
+        self.upconv1 = nn.Conv2d(64, 128, kernel_size = 1, stride = 1)
 
-        self.fc1 = nn.Linear(1024, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, 128)
+        self.predict_f3 = nn.Linear(12*12*self.output_kernel, 128)
+        self.predict_f2 = nn.Linear(29*29*self.output_kernel, 128)
+        self.predict_f1 = nn.Linear(65*65*self.output_kernel, 128)
+        self.predict_top = nn.Linear(12*12*self.output_kernel, 128)
 
-        self.relu = nn.ReLU()
+        self.predict_output = nn.Linear(128*4, 128)
+        
+
+        # for U-net dilation features
+        # u down
+        # self.dconv_down1 = double_conv(3, 8)
+        # self.dconv_down2 = double_conv(8, 16)
+        # self.dconv_down3 = double_conv(16, 32)
+        # self.dconv_down4 = double_conv(128, 256)     
+
+        # self.maxpool = nn.MaxPool2d(2)
+        # self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)   
+        # u up
+        # self.dconv_up3 = double_conv(32 + 32, 32)
+        # self.dconv_up2 = double_conv(16 + 16, 8)
+        # self.dconv_up1 = double_conv(8 + 8, 4)
+        # parallel dilated conv
+        # self.dilate1 = dilation_conv(16,16,1)
+        # self.dilate2 = dilation_conv(16,16,2)
+        # self.dilate3 = dilation_conv(16,16,4)
+        # self.dilate4 = dilation_conv(32,32,8)
+        # self.dilate5 = dilation_conv(128,128,16)
+        # self.dilate6 = dilation_conv(128,128,32)
+
+        # self.conv_out1 = nn.Conv2d(4, 3, 8, stride = 2)
+        # self.conv_out2 = nn.Conv2d(3, 2, 6, stride = 2)
+        # self.conv_out3 = nn.Conv2d(2, 1, 1)
+        # self.conv_out4 = nn.Conv2d(4, 1, 1)
+
+        self.fc1 = nn.Linear(2116, 256)
+        self.fc2 = nn.Linear(256, 128)
+        # self.fc3 = nn.Linear(256, 128)
+        # self.fc4 = nn.Linear(256, 128)
+
+        self.relu = nn.ReLU(inplace = True)
         self.lrelu = nn.LeakyReLU(0.01)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward method implementation."""
-        dist = self.dist(x)
-        q = torch.sum(dist * self.support, dim=2)
-        return q
-    
-    def feature_layer(self, x):
-        x = self.relu(self.bn1(self.conv1(x)))
-        x = self.relu(self.bn2(self.conv2(x)))
-        x = self.relu(self.bn3(self.conv3(x)))
-        x = self.relu(self.bn4(self.conv4(x)))
-        x = self.relu(self.bn5(self.conv5(x)))
-        #  print(x.shape)
-        x = self.lrelu(self.fc1(x.view(x.size(0), -1)))
-        x = self.lrelu(self.fc2(x))
-        x = self.lrelu(self.fc3(x))
-        # x = self.lrelu(self.fc4(x))
+    def _upsample_add(self, x, y):
+        _,_,H,W = y.size()
+        # upsample is deprecated
+        return F.interpolate(x, size=(H,W), mode='bilinear') + y
 
+    def fpn_feature_layer(self,x):
+        f1 = self.relu(self.bn1(self.conv1(x)))
+        f2 = self.relu(self.bn2(self.conv2(self.maxpool(f1))))
+        f3 = self.relu(self.bn3(self.conv3(self.maxpool(f2))))
+        top = self.top_layer(f3)
+
+        f3 = self._upsample_add(top, self.latlayer3(f3))
+        f2 = self._upsample_add(f3, self.latlayer2(f2))
+        f1 = self._upsample_add(f2, self.latlayer1(f1))
+
+        f3 = self.smooth3(f3)
+        f2 = self.smooth2(f2)
+        f1 = self.smooth1(f1)
+
+        # print(f1.shape)
+        # print(f2.shape)
+        # print(f3.shape)
+        # print(top.shape)
+
+        top = self.relu(self.predict_top(top.view(top.size(0), -1)))
+        f1 = self.relu(self.predict_f1(f1.view(f1.size(0), -1)))
+        f2 = self.relu(self.predict_f2(f2.view(f2.size(0), -1)))
+        f3 = self.relu(self.predict_f3(f3.view(f3.size(0), -1)))
+
+        x = self.predict_output(torch.cat((top,f1,f2,f3), dim = 1))
+        # print(x)
         return x
+
+    # def U_feature_layer(self,x):
+    #     conv1 = self.dconv_down1(x)
+    #     x = self.maxpool(conv1)
+    #     conv2 = self.dconv_down2(x)
+    #     x = self.maxpool(conv2)
+
+    #     # parallel dilated conv
+    #     d_1 = self.dilate1(x)
+    #     d_2 = self.dilate2(d_1)
+    #     d_3 = self.dilate3(d_2)
+    #     d_sum  = d_1 + d_2 + d_3
+
+    #     x = self.upsample(d_sum)
+    #     x = torch.cat([x, conv2], dim = 1)
+    #     x = self.dconv_up2(x)
+    #     x = self.upsample(x)
+    #     x = torch.cat([x, conv1], dim = 1)
+    #     x = self.dconv_up1(x)
+
+    #     x = self.conv_out1(x)
+    #     x = self.conv_out2(x)
+    #     x = self.conv_out3(x)
+    #     x = self.lrelu(self.fc1(x.view(x.size(0), -1)))
+    #     x = self.lrelu(self.fc2(x))
+
+    #     return x
+
+    # def feature_layer(self, x):
+    #     x = self.relu(self.bn1(self.conv1(x)))
+    #     x = self.relu(self.bn2(self.conv2(x)))
+    #     x = self.relu(self.bn3(self.conv3(x)))
+    #     x = self.relu(self.bn4(self.conv4(x)))
+    #     x = self.relu(self.bn5(self.conv5(x)))
+    #     #  print(x.shape)
+    #     x = self.lrelu(self.fc1(x.view(x.size(0), -1)))
+    #     x = self.lrelu(self.fc2(x))
+    #     x = self.lrelu(self.fc3(x))
+    #     # x = self.lrelu(self.fc4(x))
+
+    #     return x
 
     def dist(self, x: torch.Tensor) -> torch.Tensor:
         """Get distribution for atoms."""
-        feature = self.feature_layer(x)
+        # feature = self.feature_layer(x)
+        # feature = self.U_feature_layer(x)
+        feature = self.fpn_feature_layer(x)
         adv_hid = F.relu(self.advantage_hidden_layer(feature))
         val_hid = F.relu(self.value_hidden_layer(feature))
         
         advantage = self.advantage_layer(adv_hid).view(
             -1, self.out_dim, self.atom_size
         )
+
         value = self.value_layer(val_hid).view(-1, 1, self.atom_size)
         q_atoms = value + advantage - advantage.mean(dim=1, keepdim=True)
         
@@ -120,6 +276,12 @@ class Network(nn.Module):
         dist = dist.clamp(min=1e-3)  # for avoiding nans
         
         return dist
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method implementation."""
+        dist = self.dist(x)
+        q = torch.sum(dist * self.support, dim=2)
+        return q
     
     def reset_noise(self):
         """Reset all noisy layers."""
@@ -144,7 +306,7 @@ class RainbowAgent:
         # Categorical DQN parameters
         v_min: float = 0.0,
         v_max: float = 200.0,
-        atom_size: int = 101,
+        atom_size: int = 51,
         # N-step Learning
         n_step: int = N_STEP_LEARNING,
         # training
@@ -153,12 +315,15 @@ class RainbowAgent:
         save_freq: int = SAVE_FREQ
     ):
 
+        self.valid_reward = []
+        self.valid_hit_list = []
         channels = 3
         obs_dim = env.obs_resize_shape
-        action_dim = env.action_space
+        self.action_dim = env.action_space
         self.num_timesteps = num_timesteps
         self.display_freq = display_freq
         self.save_freq = save_freq
+        self.fraction_max_frame = MAX_FRACTION_FRAME
         self.checkpoint_n = 0
         
         self.env = env
@@ -203,10 +368,10 @@ class RainbowAgent:
 
         # networks: dqn, dqn_target
         self.dqn = Network(
-            channels, action_dim, self.atom_size, self.support
+            channels, self.action_dim, self.atom_size, self.support, NoisyLinear
         ).to(self.device)
         self.dqn_target = Network(
-            channels, action_dim, self.atom_size, self.support
+            channels, self.action_dim, self.atom_size, self.support, NoisyLinear
         ).to(self.device)
         self.dqn_target.load_state_dict(self.dqn.state_dict())
         self.dqn_target.eval()
@@ -225,9 +390,28 @@ class RainbowAgent:
         # NoisyNet: no epsilon greedy action selection
         
         temp_trans = [state]
-        selected_action = self.dqn(state).argmax()
-        # selected_action = selected_action.detach().cpu().numpy()
-        selected_action = selected_action.detach()
+        if IS_EPS == False:
+            with torch.no_grad():
+                selected_action = self.dqn(state).argmax()
+                # selected_action = selected_action.detach().cpu().numpy()
+                selected_action = selected_action.detach()
+        else:
+            sample = random.random()  # get random number from [0.0, 1.0)
+            
+            if self.is_test == True:
+                eps_threshold = 0
+            else:
+                eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * self.steps / EPS_DECAY)
+            if sample > eps_threshold:
+                with torch.no_grad():
+                    # print(self.dqn(state))
+                    selected_action = self.dqn(state).argmax()
+                    selected_action = selected_action.detach()
+            
+            else:
+                selected_action = torch.tensor([[random.randrange(self.action_dim)]], dtype = torch.long)
+
+
         temp_trans.append(selected_action)
         if not self.is_test:
             self.transition = temp_trans
@@ -289,6 +473,7 @@ class RainbowAgent:
             loss = torch.mean(elementwise_loss * weights)
 
         self.optimizer.zero_grad()
+        # loss.retain_grad()
         loss.backward()
         clip_grad_norm_(self.dqn.parameters(), 10.0)
         self.optimizer.step()
@@ -299,9 +484,11 @@ class RainbowAgent:
         self.memory.update_priorities(indices, new_priorities)
         
         # NoisyNet: reset noise
-        self.dqn.reset_noise()
-        self.dqn_target.reset_noise()
+        if IS_EPS == False:
+            self.dqn.reset_noise()
+            self.dqn_target.reset_noise()
 
+        # return loss.item(), torch.sum(torch.abs(self.dqn.advantage_layer.weight_sigma.grad)).item()
         return loss.item()
     
     def save(self, save_path):
@@ -333,22 +520,24 @@ class RainbowAgent:
             frame_idx = 0
             loss = 0
             self.t = 0
+            check = 0
             while(not done):
                 self.t += 1
                 frame_idx +=1
                 self.steps += 1
                 action = self.select_action(state)
                 next_state, reward, done, _ = self.step(action)
+                # print(reward, done, self.invincible)
 
                 state = next_state
                 total_reward += reward
                 episode_reward += reward
-                print('\r Now reward: {}'.format(episode_reward), end = '\r')
+                print('\r Now reward: {} | frame: {}'.format(episode_reward, self.t), end = '\r')
                 
                 # NoisyNet: removed decrease of epsilon
                 
                 # PER: increase beta
-                fraction = min(frame_idx / self.num_timesteps, 1.0)
+                fraction = min(frame_idx / self.fraction_max_frame, 1.0)
                 self.beta = self.beta + fraction * (1.0 - self.beta)
 
                 # if training is ready
@@ -379,7 +568,6 @@ class RainbowAgent:
                     if episodes_done_num != 0:
                         self.save('rainbow_checkpoint')
                     self.validation()
-                    self.is_test = False
                     self.checkpoint_n += 1
 
 
@@ -390,33 +578,65 @@ class RainbowAgent:
 
 
     def validation(self):
+        self.is_valid = True
         self.is_test = True
         saver = ReplaySaver()
         state = self.env.reset(resize = RESIZE, size = RESIZE_SIZE)
         state = torch.from_numpy(state).permute(2,0,1).unsqueeze(0).type(torch.FloatTensor).to(self.device)
         done = False
         total_reward = 0
-        self.invincible = False
 
-        while not done:
-            action = self.select_action(state)
-            state, reward, done, end = self.step(action)
-            total_reward += reward
-            print('\r Now rewards: {}'.format(total_reward), end = '\r')
-            saver.get_current_frame()
+        if VALID_INVINCIBLE == True:
+            self.invincible = True
+        else:
+            self.invincible = False
         
+        self.valid_hit = 0
+        vaild_t = 0
+        if VALID_INVINCIBLE == False:
+            while not done:
+                action = self.select_action(state)
+                state, reward, done, end = self.step(action)
+                total_reward += reward
+                print('\r Now rewards: {}'.format(total_reward), end = '\r')
+                saver.get_current_frame()
+                
+        else:
+            while (not done and vaild_t <= VALID_MAX_T):
+                vaild_t += 1
+                action = self.select_action(state)
+                state, reward, done, end = self.step(action)
+                total_reward += reward
+                print('\r Now rewards: {}'.format(total_reward), end = '\r')
+                saver.get_current_frame()
+                self.valid_hit += self.env.is_collision()
+            self.valid_hit_list.append(self.valid_hit)
+            np.save('./checkpoints/valid_hits', np.array(self.valid_hit_list))
+        
+        self.valid_reward.append(total_reward)
+        print('Valid reward: {} | Hit get: {}'.format(total_reward, self.valid_hit))
+        np.save('./checkpoints/valid_reward', np.array(self.valid_reward))
         saver.save_best()
         print('Making video...')
         saver.make_video('./checkpoints/checkpoint_{}.mp4'.format(self.checkpoint_n))
         print('Validation video made!!')
-        self.invincible = True
+        
+        self.is_test = False
+        self.is_valid = False
+        if INVINCIBLE == True:
+            self.invincible = True
+        else:
+            self.invincible = False
 
-    def test(self, episodes = 10, saving_path = './test.mp4', size = (750,750), fps = 30):
+    def test(self, episodes = 10, saving_path = './test.mp4', size = (750,750), fps = 30, invincible_mode = False, test_max_t = 500):
         saver = ReplaySaver()
         rewards = []
         best_reward = -np.inf
         self.is_test = True
-        self.invincible = False
+        if invincible_mode == True:
+            self.invincible = True
+        else:
+            self.invincible = False
 
         for i in range(episodes):
             done = False
@@ -426,16 +646,24 @@ class RainbowAgent:
             episode_reward = 0.0
 
             # play one game
-            while(not done):
-                action = self.select_action(state)
-                state, reward, done, end = self.step(action)
-                saver.get_current_frame()
-                episode_reward += reward
-                print('\r episode: {} | Now reward: {} '.format(i+1,episode_reward), end = '\r')
-            
-            while(end):
-                _,_,_, end = self.env.step(action)
-                saver.get_current_frame()
+            if self.invincible == False:
+                while(not done):
+                    action = self.select_action(state)
+                    state, reward, done, end = self.step(action)
+                    
+                    saver.get_current_frame()
+                    episode_reward += reward
+                    print('\r episode: {} | Now reward: {} '.format(i+1,episode_reward), end = '\r')
+            else:
+                self.t = 0
+                while(self.t <= test_max_t):
+                    self.t+=1
+                    action = self.select_action(state)
+                    state, reward, done, end = self.step(action)
+                    
+                    saver.get_current_frame()
+                    episode_reward += reward
+                    print('\r episode: {} | Now reward: {} '.format(i+1,episode_reward), end = '\r')
             
             if episode_reward <= best_reward:
                 saver.reset()
@@ -450,6 +678,61 @@ class RainbowAgent:
         print('Median:', np.median(rewards))
         print('Saving best reward video')
         saver.make_video(path = saving_path, size = size, fps = fps)
+        np.save('./checkpoints/test_reward', rewards)
+        print('Video saved :)')
+
+    def test_random(self, episodes = 10, saving_path = './test_random.mp4', size = (750,750), fps = 30, invincible_mode = False, test_max_t = 500):
+        saver = ReplaySaver()
+        rewards = []
+        best_reward = -np.inf
+        self.is_test = True
+
+        if invincible_mode == True:
+            self.invincible = True
+        else:
+            self.invincible = False
+
+        for i in range(episodes):
+            done = False
+            state = self.env.reset(resize = RESIZE, size = RESIZE_SIZE)
+            saver.get_current_frame()
+            episode_reward = 0.0
+
+            # play one game
+            if self.invincible == False:
+                while(not done):
+                    action = np.random.choice(5, 1)[0]
+                    state, reward, done, end = self.env.step(action, resize=RESIZE, size = RESIZE_SIZE, invincible = self.invincible)
+                    
+                    saver.get_current_frame()
+                    episode_reward += reward
+                    print('\r episode: {} | Now reward: {} '.format(i+1,episode_reward), end = '\r')
+            
+            else:
+                t = 0
+                while(t <= test_max_t):
+                    t+=1
+                    action = np.random.choice(5, 1)[0]
+                    state, reward, done, end = self.env.step(action, resize=RESIZE, size = RESIZE_SIZE, invincible = self.invincible)
+                    
+                    saver.get_current_frame()
+                    episode_reward += reward
+                    print('\r episode: {} | Now reward: {} '.format(i+1,episode_reward), end = '\r')
+            
+            if episode_reward <= best_reward:
+                saver.reset()
+            else:
+                best_reward = episode_reward
+                saver.save_best()
+                saver.reset()
+
+            rewards.append(episode_reward)
+        print('Run %d episodes'%(episodes))
+        print('Mean:', np.mean(rewards))
+        print('Median:', np.median(rewards))
+        print('Saving best reward video')
+        saver.make_video(path = saving_path, size = size, fps = fps)
+        np.save('./checkpoints/test_random_reward', rewards)
         print('Video saved :)')
 
     def _compute_dqn_loss(self, samples: Dict[str, np.ndarray], gamma: float) -> torch.Tensor:
@@ -509,3 +792,6 @@ class RainbowAgent:
         """Hard update: target <- local."""
         self.dqn_target.load_state_dict(self.dqn.state_dict())
                 
+
+
+# %%

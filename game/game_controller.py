@@ -9,6 +9,7 @@ import time
 import cv2
 from game_config import *
 from game_models import *
+import skvideo.io
 
 class GameManager:
     def __init__(self, bullet_mode, explode_mode, plane_show, score_show, test_mode = False):
@@ -196,12 +197,17 @@ class ReplaySaver:
         self.frame_array.append(frame)
     
     def make_video(self, path, size = (750,750), fps = 60):
-        out = cv2.VideoWriter(path,cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+        # out = cv2.VideoWriter(path,cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+        rate = '60'
+        writer = skvideo.io.FFmpegWriter(path, inputdict = {'-r':rate}, outputdict={'-r':rate})
         print('Vid length: {}'.format(len(self.best_frame_array)))
         for i in self.best_frame_array:
             i = np.rot90(i,3)
-            i = cv2.cvtColor(i, cv2.COLOR_BGR2RGB)
-            out.write(i)
+            # i = cv2.cvtColor(i, cv2.COLOR_BGR2RGB)
+            writer.writeFrame(i)
+            # out.write(i)
             
         print('Writing video...')
-        out.release()
+        writer.close()
+        # out.release()
+

@@ -9,6 +9,7 @@ EXPOLDE_MODE = True
 PLANE_SHOW = True
 SCORE_SHOW = True
 SCREEN_SHOW = True
+TEST_MODE = False
 
 if SCREEN_SHOW == False:
     os.environ["SDL_VIDEODRIVER"] = "dummy"
@@ -16,7 +17,7 @@ if SCREEN_SHOW == False:
 from rainbow_agent import *
 from game_controller import GameManager
 
-env = GameManager(bullet_mode = BULLET_MODE, explode_mode=EXPOLDE_MODE, plane_show=PLANE_SHOW, score_show=SCORE_SHOW)
+env = GameManager(bullet_mode = BULLET_MODE, explode_mode=EXPOLDE_MODE, plane_show=PLANE_SHOW, score_show=SCORE_SHOW, test_mode = TEST_MODE)
 
 run = True
 while run:
