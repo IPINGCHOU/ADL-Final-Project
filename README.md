@@ -21,9 +21,10 @@ Our folder structure is as following:
     │   ├── test_rainbow.py    # Testing model file
     │   ├── rainbow_agent.py   # Model agent file
     │   └── game.py            # Game main file
-    ├── PPO                    # Here put our rainbow PPO, like Rainbow_GPUbuffer
-    ├── GAE                    # Here put our rainbow GAE, like Rainbow_GPUbuffer
-    ├── DQN                    # Here put our rainbow DQN, like Rainbow_GPUbuffer
+    ├── Rainbow                # Rainbow, same structure as Rainbow_GPUbuffer
+    ├── PPO                    # PPO, same structure as Rainbow_GPUbuffer
+    ├── GAE                    # GAE, same structure as Rainbow_GPUbuffer
+    ├── DQN                    # DQN, same structure as Rainbow_GPUbuffer
     ├── game                   # Game configs
     └── README.md
 
@@ -66,7 +67,8 @@ It will generate the best game-play video in 100 episodes. With the following ar
  ```bash=
  python test.py
  ```
- Then it will save the test.mp4 
+ Then it will save the test.mp4.
+
  Also, you can draw the reward and loss line chart. You can modify the --rw and --loss as where your log you put.
  ```bash=
  python plot.py --rw="./PPO/rw.npy" --loss="./PPO/loss.npy"
