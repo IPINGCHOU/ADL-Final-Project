@@ -1,5 +1,9 @@
 # ADL-Final-Project
+![image](https://github.com/IPINGCHOU/ADL-Final-Project/blob/master/title_image.png)
+
 Reinforcement Learning are widely used in AI game-play learning field. Model training efficiency and performance is therefore an important study. In our study, we focus on how RL models play the bull hell game. We design numerous method, such as Proximal Policy Optimization (PPO), Generalized Advantage Estimation (GAE), Soft Actor-Critic (SAC) and Rainbow DQN, and discuss each performance in order to find the best method in the bullet hell game. By observing how the model make interaction with our game environment, we modify the game design to fit the model training with well-tuned hyper-parameters on PG and DQN-based models.
+
+
 
 ## Environment
 
