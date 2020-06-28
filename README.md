@@ -26,6 +26,7 @@ Our folder structure is as following:
     ├── PPO                    # PPO, same structure as Rainbow_GPUbuffer
     ├── GAE                    # GAE, same structure as Rainbow_GPUbuffer
     ├── DQN                    # DQN, same structure as Rainbow_GPUbuffer
+    ├── SAC                    # SAC, same structure as Rainbow_GPUbuffer
     ├── game                   # Game configs
     └── README.md
 
@@ -84,11 +85,14 @@ python train_dqn.py
 # TESTING
 python test_dqn.py
 ```
+After running test_dqn.py, the best gameplay video will be saved as test.mp4.
 
-### Soft Actor Critic
+## Soft Actor Critic
 ```bash
 # TRAINING
 python train_sac.py
 
 # TESTING
 python test_sac.py
+```
+After running test_sac.py, the best gameplay video will be saved as test.mp4.
